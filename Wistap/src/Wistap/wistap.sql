@@ -2,25 +2,27 @@ CREATE SCHEMA wistap;
 
 CREATE TABLE wistap.object
 (
-    id              bigserial PRIMARY KEY,
-    account_key     bytea NOT NULL,
-    type            smallint NOT NULL,
-    payload         jsonb NOT NULL,
-    version         bytea NOT NULL
+    id      bigserial PRIMARY KEY,
+    account bytea NOT NULL,
+    type    smallint NOT NULL,
+    payload jsonb NOT NULL,
+    version bytea NOT NULL
 );
+
+CREATE INDEX object_account_type_idx ON wistap.object (account, type);
 
 ---------------------------------------------------
 --- Create a new object
 
-CREATE OR REPLACE FUNCTION wistap.create_object(account_key bytea, type smallint, payload jsonb)
+CREATE OR REPLACE FUNCTION wistap.create_object(account bytea, type smallint, payload jsonb)
 RETURNS bigint
 AS $$ #variable_conflict use_variable
 DECLARE
     result bigint;
 BEGIN
 
-    INSERT INTO wistap.object (account_key, type, payload, version)
-    VALUES (account_key, type, payload, substring(decode(md5(payload::text), 'hex'), 1, 8))
+    INSERT INTO wistap.object (account, type, payload, version)
+    VALUES (account, type, payload, substring(decode(md5(payload::text), 'hex'), 1, 8))
     RETURNING id INTO result;
 
     RETURN result;
@@ -68,13 +70,13 @@ END $$ LANGUAGE plpgsql;
 ---------------------------------------------------
 --- Get a list of objects given their IDs
 
-CREATE OR REPLACE FUNCTION wistap.get_objects(account_key bytea, ids bigint[])
+CREATE OR REPLACE FUNCTION wistap.get_objects(account bytea, ids bigint[])
 RETURNS TABLE (id bigint, type smallint, payload jsonb, version bytea)
 AS $$ #variable_conflict use_variable BEGIN
 
     RETURN QUERY
     SELECT object.id, object.type, object.payload, object.version
     FROM wistap.object, UNNEST(ids) AS object_id
-    WHERE object.id = object_id AND object.account_key = account_key;
+    WHERE object.id = object_id AND object.account = account;
 
 END $$ LANGUAGE plpgsql;

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Npgsql;
@@ -11,7 +10,7 @@ namespace Wistap.Tests
 {
     public class StorageEngineTests : IDisposable
     {
-        private static readonly ByteString[] accountKeys =
+        private static readonly ByteString[] accounts =
             Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 32).Select(i => (byte)(index + 32)))).ToArray();
         private static readonly ByteString[] versions =
             Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 32).Select(i => (byte)index))).ToArray();
@@ -26,16 +25,16 @@ namespace Wistap.Tests
             this.storage.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
-            command.CommandText = @"TRUNCATE TABLE wistap.account, wistap.transaction, wistap.object;";
+            command.CommandText = @"TRUNCATE TABLE wistap.object;";
             command.ExecuteNonQuery();
         }
-        
+
         [Fact]
         public async Task CreateObject_Success()
         {
-            long id = await this.storage.CreateObject(accountKeys[0], DataObjectType.Transaction, "{'abc':'def'}");
+            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
 
             Assert.Equal(1, objects.Count);
             AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
@@ -44,12 +43,12 @@ namespace Wistap.Tests
         [Fact]
         public async Task UpdateObject_Success()
         {
-            long id = await this.storage.CreateObject(accountKeys[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
 
             ByteString version = await this.storage.UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
 
             Assert.Equal(1, objects.Count);
             AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
@@ -60,13 +59,13 @@ namespace Wistap.Tests
         [Fact]
         public async Task UpdateObject_Error()
         {
-            long id = await this.storage.CreateObject(accountKeys[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 this.storage.UpdateObject(id, "{'ghi':'jkl'}", versions[0]));
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
 
             Assert.Equal(1, objects.Count);
             AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
@@ -78,12 +77,12 @@ namespace Wistap.Tests
         [Fact]
         public async Task DeleteObject_Success()
         {
-            long id = await this.storage.CreateObject(accountKeys[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
 
             await this.storage.DeleteObject(id, initialObject[0].Version);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
 
             Assert.Equal(0, objects.Count);
         }
@@ -91,13 +90,13 @@ namespace Wistap.Tests
         [Fact]
         public async Task DeleteObject_Error()
         {
-            long id = await this.storage.CreateObject(accountKeys[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 this.storage.DeleteObject(id, versions[0]));
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accountKeys[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
 
             Assert.Equal(1, objects.Count);
             AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
