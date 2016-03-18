@@ -48,6 +48,24 @@ BEGIN
 END $$ LANGUAGE plpgsql;
 
 ---------------------------------------------------
+--- Delete an existing object
+
+CREATE OR REPLACE FUNCTION wistap.delete_object(id bigint, version bytea)
+RETURNS bytea
+AS $$ #variable_conflict use_variable
+DECLARE
+    result bytea;
+BEGIN
+
+    DELETE FROM wistap.object
+    WHERE object.id = id AND object.version = version
+    RETURNING version INTO result;
+
+    RETURN result;
+
+END $$ LANGUAGE plpgsql;
+
+---------------------------------------------------
 --- Get a list of objects given their IDs
 
 CREATE OR REPLACE FUNCTION wistap.get_objects(account_key bytea, ids bigint[])

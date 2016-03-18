@@ -27,6 +27,14 @@ namespace Wistap
         Task<ByteString> UpdateObject(long id, string payload, ByteString version);
 
         /// <summary>
+        /// Delete an existing object.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        Task DeleteObject(long id, ByteString version);
+
+        /// <summary>
         /// Get a list of objects given their IDs.
         /// </summary>
         /// <param name="account"></param>

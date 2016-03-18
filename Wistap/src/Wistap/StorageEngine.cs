@@ -61,6 +61,23 @@ namespace Wistap
             }
         }
 
+        public async Task DeleteObject(long id, ByteString version)
+        {
+            const string queryText =
+                @"SELECT wistap.delete_object(@id, @version) AS result;";
+
+            using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection))
+            {
+                command.Parameters.Add(new NpgsqlParameter("@id", id));
+                command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
+
+                IReadOnlyList<bool> notFound = await ExecuteQuery(command, reader => reader["result"] is DBNull);
+
+                if (notFound[0])
+                    throw new UpdateConflictException(id, version);
+            }
+        }
+
         public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<long> ids)
         {
             const string queryText =
