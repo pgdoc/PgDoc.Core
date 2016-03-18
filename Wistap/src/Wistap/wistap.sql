@@ -80,3 +80,18 @@ AS $$ #variable_conflict use_variable BEGIN
     WHERE object.id = object_id AND object.account = account;
 
 END $$ LANGUAGE plpgsql;
+
+---------------------------------------------------
+--- Get a list of objects given their IDs
+
+CREATE OR REPLACE FUNCTION wistap.ensure_objects(ids bigint[])
+RETURNS TABLE (id bigint, version bytea)
+AS $$ #variable_conflict use_variable BEGIN
+
+    RETURN QUERY
+    SELECT object.id, object.version
+    FROM wistap.object, UNNEST(ids) AS object_id
+    WHERE object.id = object_id
+    FOR SHARE;
+
+END $$ LANGUAGE plpgsql;

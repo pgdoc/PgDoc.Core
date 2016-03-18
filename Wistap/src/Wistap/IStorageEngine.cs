@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading.Tasks;
 
 namespace Wistap
@@ -41,5 +42,7 @@ namespace Wistap
         /// <param name="ids"></param>
         /// <returns></returns>
         Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<long> ids);
+
+        DbTransaction StartTransaction();
     }
 }
