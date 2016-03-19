@@ -69,6 +69,20 @@ namespace Wistap.Tests
         }
 
         [Fact]
+        public async Task UpdateObject_ValueToNull()
+        {
+            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version2 = await UpdateObject(null, version1);
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], null, version2);
+            Assert.Equal(8, version2.Value.Count);
+            Assert.NotEqual(version1, version2);
+        }
+
+        [Fact]
         public async Task UpdateObject_NullToValue()
         {
             ByteString version1 = await UpdateObject(null, ByteString.Empty);
