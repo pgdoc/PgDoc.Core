@@ -13,8 +13,8 @@ namespace Wistap.Tests
     {
         private static readonly ByteString account = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)i));
         private static readonly ByteString wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
-        private static readonly ByteString[] ids =
-            Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 16).Select(i => (byte)index))).ToArray();
+        private static readonly ObjectId[] ids =
+            Enumerable.Range(0, 32).Select(index => new ObjectId(new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray()))).ToArray();
 
         private readonly IStorageEngine storage;
 
@@ -177,7 +177,7 @@ namespace Wistap.Tests
         [Fact]
         public async Task GetRecords_NoObject()
         {
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new ByteString[0]);
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new ObjectId[0]);
 
             Assert.Equal(0, objects.Count);
         }
@@ -288,9 +288,9 @@ namespace Wistap.Tests
             return await this.storage.UpdateObject(ids[0], account, payload, version);
         }
 
-        private static void AssertObject(DataObject dataObject, ByteString id, string payload, ByteString version)
+        private static void AssertObject(DataObject dataObject, ObjectId id, string payload, ByteString version)
         {
-            Assert.Equal(id, dataObject.Id);
+            Assert.Equal(id.Value, dataObject.Id.Value);
 
             if (payload == null)
             {

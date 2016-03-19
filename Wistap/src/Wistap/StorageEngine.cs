@@ -27,14 +27,14 @@ namespace Wistap
                 await connection.OpenAsync();
         }
 
-        public async Task<ByteString> UpdateObject(ByteString id, ByteString account, string payload, ByteString version)
+        public async Task<ByteString> UpdateObject(ObjectId id, ByteString account, string payload, ByteString version)
         {
             const string queryText =
                 @"SELECT wistap.update_object(@id, @account, @payload, @version) AS result;";
 
             using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
             {
-                command.Parameters.AddWithValue("@id", NpgsqlDbType.Uuid, new Guid(id.ToByteArray()));
+                command.Parameters.AddWithValue("@id", NpgsqlDbType.Uuid, id.Value);
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
                 command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, payload != null ? (object)JObject.Parse(payload) : DBNull.Value);
                 command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
@@ -55,12 +55,12 @@ namespace Wistap
             }
         }
 
-        public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<ByteString> ids)
+        public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<ObjectId> ids)
         {
             const string queryText =
                 @"SELECT id, payload, version FROM wistap.get_objects(@account, @ids);";
 
-            List<Guid> idList = ids.Select(id => new Guid(id.ToByteArray())).ToList();
+            List<Guid> idList = ids.Select(id => id.Value).ToList();
 
             if (idList.Count == 0)
                 return new DataObject[0];
@@ -75,15 +75,15 @@ namespace Wistap
                     IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
                     command,
                     reader => new DataObject(
-                        new ByteString(((Guid)reader["id"]).ToByteArray()),
+                        new ObjectId((Guid)reader["id"]),
                         reader["payload"] is DBNull ? null : (string)reader["payload"],
                         new ByteString((byte[])reader["version"])));
 
-                    Dictionary<ByteString, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
+                    Dictionary<ObjectId, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
 
                     foreach (Guid id in idList)
                     {
-                        ByteString byteStringId = new ByteString(id.ToByteArray());
+                        ObjectId byteStringId = new ObjectId(id);
                         if (!result.ContainsKey(byteStringId))
                             result.Add(byteStringId, new DataObject(byteStringId, null, ByteString.Empty));
                     }
@@ -92,7 +92,7 @@ namespace Wistap
                 }
                 catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
                 {
-                    throw new UpdateConflictException(new ByteString(idList[0].ToByteArray()), null);
+                    throw new UpdateConflictException(new ObjectId(idList[0]), null);
                 }
             }
         }

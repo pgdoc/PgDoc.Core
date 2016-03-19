@@ -4,7 +4,7 @@ namespace Wistap
 {
     public class DataObject
     {
-        public DataObject(ByteString id, string payload, ByteString version)
+        public DataObject(ObjectId id, string payload, ByteString version)
         {
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
@@ -17,7 +17,7 @@ namespace Wistap
             this.Version = version;
         }
 
-        public ByteString Id { get; }
+        public ObjectId Id { get; }
 
         public string Payload { get; }
 
