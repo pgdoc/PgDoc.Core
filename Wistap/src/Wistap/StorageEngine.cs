@@ -70,23 +70,30 @@ namespace Wistap
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-                IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
+                try
+                {
+                    IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
                     command,
                     reader => new DataObject(
                         new ByteString(((Guid)reader["id"]).ToByteArray()),
                         reader["payload"] is DBNull ? null : (string)reader["payload"],
                         new ByteString((byte[])reader["version"])));
 
-                Dictionary<ByteString, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
+                    Dictionary<ByteString, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
 
-                foreach (Guid id in idList)
-                {
-                    ByteString byteStringId = new ByteString(id.ToByteArray());
-                    if (!result.ContainsKey(byteStringId))
-                        result.Add(byteStringId, new DataObject(byteStringId, null, ByteString.Empty));
+                    foreach (Guid id in idList)
+                    {
+                        ByteString byteStringId = new ByteString(id.ToByteArray());
+                        if (!result.ContainsKey(byteStringId))
+                            result.Add(byteStringId, new DataObject(byteStringId, null, ByteString.Empty));
+                    }
+
+                    return result.Values.ToList().AsReadOnly();
                 }
-
-                return result.Values.ToList().AsReadOnly();
+                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
+                {
+                    throw new UpdateConflictException(new ByteString(idList[0].ToByteArray()), null);
+                }
             }
         }
 

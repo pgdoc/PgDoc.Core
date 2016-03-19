@@ -88,7 +88,8 @@ AS $$ #variable_conflict use_variable BEGIN
     RETURN QUERY
     SELECT object.id, object.payload, object.version
     FROM wistap.object, UNNEST(ids) AS object_id
-    WHERE object.id = object_id AND object.account = account;
+    WHERE object.id = object_id AND object.account = account
+    FOR SHARE;
 
 END $$ LANGUAGE plpgsql;
 
