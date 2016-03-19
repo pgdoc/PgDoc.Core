@@ -105,7 +105,8 @@ namespace Wistap.Tests
             
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
-            Assert.Equal(0, objects.Count);
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], null, ByteString.Empty);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(versions[0], exception.Version);
         }
@@ -140,6 +141,26 @@ namespace Wistap.Tests
             AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(ByteString.Empty, exception.Version);
+        }
+
+        [Fact]
+        public async Task GetObjects_MultipleObjects()
+        {
+            ByteString version1 = await this.storage.UpdateObject(ids[0], account, "{'abc':'def'}", ByteString.Empty);
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0], ids[1] });
+
+            Assert.Equal(2, objects.Count);
+            AssertObject(objects.First(dataObject => dataObject.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
+            AssertObject(objects.First(dataObject => dataObject.Id.Equals(ids[1])), ids[1], null, ByteString.Empty);
+        }
+
+        [Fact]
+        public async Task GetRecords_NoObject()
+        {
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new ByteString[0]);
+
+            Assert.Equal(0, objects.Count);
         }
 
         //[Fact]

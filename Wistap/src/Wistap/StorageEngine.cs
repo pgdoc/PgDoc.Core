@@ -26,26 +26,7 @@ namespace Wistap
             if (connection.State == ConnectionState.Closed)
                 await connection.OpenAsync();
         }
-
-        #region Operations
-
-        //public async Task<long> CreateObject(ByteString account, DataObjectType type, string payload)
-        //{
-        //    const string queryText =
-        //        @"SELECT wistap.create_object(@account_key, @type, @payload) AS result;";
-
-        //    using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
-        //    {
-        //        command.Parameters.Add(new NpgsqlParameter("@account_key", account.ToByteArray()));
-        //        command.Parameters.Add(new NpgsqlParameter("@type", (short)type));
-        //        command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, JObject.Parse(payload));
-
-        //        IReadOnlyList<long> result = await ExecuteQuery(command, reader => (long)reader["result"]);
-
-        //        return result[0];
-        //    }
-        //}
-
+        
         public async Task<ByteString> UpdateObject(ByteString id, ByteString account, string payload, ByteString version)
         {
             const string queryText =
@@ -74,30 +55,6 @@ namespace Wistap
             }
         }
 
-        //public async Task DeleteObject(long id, ByteString version)
-        //{
-        //    const string queryText =
-        //        @"SELECT wistap.delete_object(@id, @version) AS result;";
-
-        //    using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
-        //    {
-        //        command.Parameters.Add(new NpgsqlParameter("@id", id));
-        //        command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
-
-        //        try
-        //        {
-        //            IReadOnlyList<bool> notFound = await ExecuteQuery(command, reader => reader["result"] is DBNull);
-
-        //            if (notFound[0])
-        //                throw new UpdateConflictException(id, version);
-        //        }
-        //        catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
-        //        {
-        //            throw new UpdateConflictException(id, version);
-        //        }
-        //    }
-        //}
-
         public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<ByteString> ids)
         {
             const string queryText =
@@ -113,12 +70,23 @@ namespace Wistap
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-                return await ExecuteQuery(
+                IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
                     command,
                     reader => new DataObject(
                         new ByteString(((Guid)reader["id"]).ToByteArray()),
                         reader["payload"] is DBNull ? null : (string)reader["payload"],
                         new ByteString((byte[])reader["version"])));
+
+                Dictionary<ByteString, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
+
+                foreach (Guid id in idList)
+                {
+                    ByteString byteStringId = new ByteString(id.ToByteArray());
+                    if (!result.ContainsKey(byteStringId))
+                        result.Add(byteStringId, new DataObject(byteStringId, null, ByteString.Empty));
+                }
+                
+                return result.Values.ToList().AsReadOnly();
             }
         }
 
@@ -136,8 +104,6 @@ namespace Wistap
         //            reader => new DataObject((long)reader["id"], (DataObjectType)(short)reader["type"], (string)reader["payload"], new ByteString((byte[])reader["version"])));
         //    }
         //}
-
-        #endregion
 
         public DbTransaction StartTransaction()
         {
