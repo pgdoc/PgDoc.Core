@@ -67,8 +67,7 @@ AS $$ DECLARE
 BEGIN
 
     bytes = decode(substring(id::text, 1, 4), 'hex');
-
-    RETURN get_byte(bytes, 1)::smallint * 256 + get_byte(bytes, 0)::smallint;
+    RETURN (get_byte(bytes, 1)::smallint << 8) | get_byte(bytes, 0)::smallint;
 
 END $$ LANGUAGE plpgsql IMMUTABLE;
 

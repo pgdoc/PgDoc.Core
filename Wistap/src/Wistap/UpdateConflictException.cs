@@ -12,7 +12,7 @@ namespace Wistap
         /// </summary>
         /// <param name="failedUpdate">The failed record mutation.</param>
         public UpdateConflictException(ObjectId id, ByteString version)
-            : base($"The object ID '{id}' has beed modified.")
+            : base($"The object '{id}' has been modified.")
         {
             this.Id = id;
             this.Version = version;
