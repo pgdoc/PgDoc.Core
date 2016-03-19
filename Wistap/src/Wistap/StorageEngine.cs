@@ -12,7 +12,6 @@ namespace Wistap
 {
     public class StorageEngine : IStorageEngine
     {
-        private const string TransactionConflictCode = "40001";
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
 
@@ -26,7 +25,7 @@ namespace Wistap
             if (connection.State == ConnectionState.Closed)
                 await connection.OpenAsync();
         }
-        
+
         public async Task<ByteString> UpdateObject(ByteString id, ByteString account, string payload, ByteString version)
         {
             const string queryText =
@@ -39,19 +38,12 @@ namespace Wistap
                 command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, payload != null ? (object)JObject.Parse(payload) : DBNull.Value);
                 command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
 
-                try
-                {
-                    IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader["result"] is DBNull ? null : new ByteString((byte[])reader["result"]));
+                IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader["result"] is DBNull ? null : new ByteString((byte[])reader["result"]));
 
-                    if (newVersion[0] == null)
-                        throw new UpdateConflictException(id, version);
-                    else
-                        return newVersion[0];
-                }
-                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
-                {
+                if (newVersion[0] == null)
                     throw new UpdateConflictException(id, version);
-                }
+                else
+                    return newVersion[0];
             }
         }
 
@@ -85,7 +77,7 @@ namespace Wistap
                     if (!result.ContainsKey(byteStringId))
                         result.Add(byteStringId, new DataObject(byteStringId, null, ByteString.Empty));
                 }
-                
+
                 return result.Values.ToList().AsReadOnly();
             }
         }
