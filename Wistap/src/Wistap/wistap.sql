@@ -9,25 +9,7 @@ CREATE TABLE wistap.object
     version bytea NOT NULL
 );
 
-CREATE INDEX object_account_type_idx ON wistap.object (account, type);
-
 ---------------------------------------------------
---- Create a new object
-
---CREATE OR REPLACE FUNCTION wistap.create_object(account bytea, type smallint, payload jsonb)
---RETURNS bigint
---AS $$ #variable_conflict use_variable
---DECLARE
---    result bigint;
---BEGIN
-
---    INSERT INTO wistap.object (account, type, payload, version)
---    VALUES (account, type, payload, substring(decode(md5(payload::text), 'hex'), 1, 8))
---    RETURNING id INTO result;
-
---    RETURN result;
-
---END $$ LANGUAGE plpgsql;
 
 ---------------------------------------------------
 --- Update the payload of an existing object
@@ -45,13 +27,13 @@ BEGIN
             id,
             account,
             payload,
-            substring(decode(md5(COALESCE(payload::text, '')), 'hex'), 1, 8))
+            substring(decode(md5(coalesce(payload::text, '')), 'hex'), 1, 8))
         ON CONFLICT ON CONSTRAINT object_pkey DO NOTHING
         RETURNING object.version INTO result;
     ELSE
         UPDATE wistap.object
         SET payload = payload,
-            version = substring(decode(md5(COALESCE(payload::text, '') || encode(object.version, 'hex')), 'hex'), 1, 8)
+            version = substring(decode(md5(coalesce(payload::text, '') || encode(object.version, 'hex')), 'hex'), 1, 8)
         WHERE object.id = id AND object.version = version
         RETURNING object.version INTO result;
     END IF;
@@ -59,24 +41,6 @@ BEGIN
     RETURN result;
 
 END $$ LANGUAGE plpgsql;
-
----------------------------------------------------
---- Delete an existing object
-
---CREATE OR REPLACE FUNCTION wistap.delete_object(id bigint, version bytea)
---RETURNS bytea
---AS $$ #variable_conflict use_variable
---DECLARE
---    result bytea;
---BEGIN
-
---    DELETE FROM wistap.object
---    WHERE object.id = id AND object.version = version
---    RETURNING version INTO result;
-
---    RETURN result;
-
---END $$ LANGUAGE plpgsql;
 
 ---------------------------------------------------
 --- Get a list of objects given their IDs
@@ -94,16 +58,24 @@ AS $$ #variable_conflict use_variable BEGIN
 END $$ LANGUAGE plpgsql;
 
 ---------------------------------------------------
---- Get a list of objects given their IDs
+--- Extract the object type from an object ID
 
---CREATE OR REPLACE FUNCTION wistap.ensure_objects(ids bigint[])
---RETURNS TABLE (id bigint, version bytea)
---AS $$ #variable_conflict use_variable BEGIN
+CREATE OR REPLACE FUNCTION wistap.get_object_type(id uuid)
+RETURNS smallint
+AS $$ DECLARE
+    bytes bytea;
+BEGIN
 
---    RETURN QUERY
---    SELECT object.id, object.version
---    FROM wistap.object, UNNEST(ids) AS object_id
---    WHERE object.id = object_id
---    FOR SHARE;
+    bytes = decode(substring(id::text, 1, 4), 'hex');
 
---END $$ LANGUAGE plpgsql;
+    RETURN get_byte(bytes, 1)::smallint * 256 + get_byte(bytes, 0)::smallint;
+
+END $$ LANGUAGE plpgsql IMMUTABLE;
+
+---------------------------------------------------
+
+---------------------------------------------------
+--- Indexes
+
+CREATE INDEX object_account_type_idx ON wistap.object (account, (wistap.get_object_type(id)))
+WHERE payload IS NOT NULL;
