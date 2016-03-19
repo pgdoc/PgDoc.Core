@@ -11,10 +11,11 @@ namespace Wistap.Tests
 {
     public class StorageEngineTests : IDisposable
     {
-        private static readonly ByteString[] accounts =
-            Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 32).Select(i => (byte)(index + 32)))).ToArray();
+        private static readonly ByteString account = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)i));
+        private static readonly ByteString[] ids =
+            Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 16).Select(i => (byte)index))).ToArray();
         private static readonly ByteString[] versions =
-            Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 32).Select(i => (byte)index))).ToArray();
+            Enumerable.Range(0, 32).Select(index => new ByteString(Enumerable.Range(0, 32).Select(i => (byte)(index + 32)))).ToArray();
 
         private readonly IStorageEngine storage;
 
@@ -30,151 +31,260 @@ namespace Wistap.Tests
             command.ExecuteNonQuery();
         }
 
-        #region Basic Operations
-
         [Fact]
-        public async Task CreateObject_Success()
+        public async Task UpdateObject_EmptyToValue()
         {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            ByteString version = await this.storage.UpdateObject(ids[0], account, "{'abc':'def'}", ByteString.Empty);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
             Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
+            AssertObject(objects[0], ids[0], "{'abc':'def'}", version);
+            Assert.Equal(8, version.Value.Count);
         }
 
         [Fact]
-        public async Task UpdateObject_Success()
+        public async Task UpdateObject_EmptyToNull()
         {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+            ByteString version = await this.storage.UpdateObject(ids[0], account, null, ByteString.Empty);
 
-            ByteString version = await this.storage.UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
-
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
             Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
-            Assert.NotEqual(initialObject[0].Version, objects[0].Version);
-            Assert.NotEqual(version, objects[0].Version);
+            AssertObject(objects[0], ids[0], null, version);
+            Assert.Equal(8, version.Value.Count);
         }
 
         [Fact]
-        public async Task UpdateObject_VersionConflict()
+        public async Task UpdateObject_ValueToValue()
         {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+            ByteString version1 = await this.storage.UpdateObject(ids[0], account, "{'abc':'def'}", ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateObject(ids[0], account, "{'ghi':'jkl'}", version1);
 
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], "{'ghi':'jkl'}", version2);
+            Assert.Equal(8, version2.Value.Count);
+            Assert.NotEqual(version1, version2);
+        }
+
+        [Fact]
+        public async Task UpdateObject_NullToValue()
+        {
+            ByteString version1 = await this.storage.UpdateObject(ids[0], account, null, ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateObject(ids[0], account, "{'ghi':'jkl'}", version1);
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], "{'ghi':'jkl'}", version2);
+            Assert.Equal(8, version2.Value.Count);
+            Assert.NotEqual(version1, version2);
+        }
+
+        [Fact]
+        public async Task UpdateObject_NullToNull()
+        {
+            ByteString version1 = await this.storage.UpdateObject(ids[0], account, null, ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateObject(ids[0], account, null, version1);
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], null, version2);
+            Assert.Equal(8, version2.Value.Count);
+            Assert.NotEqual(version1, version2);
+        }
+
+        [Fact]
+        public async Task UpdateObject_ConflictObjectDoesNotExist()
+        {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                this.storage.UpdateObject(id, "{'ghi':'jkl'}", versions[0]));
-
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
-
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
-            Assert.Equal(initialObject[0].Version, objects[0].Version);
-            Assert.Equal(id, exception.Id);
-            Assert.Equal(versions[0], exception.Version);
-        }
-
-        [Fact]
-        public async Task UpdateObject_RepeatableReadConflict()
-        {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+                this.storage.UpdateObject(ids[0], account, "{'abc':'def'}", versions[0]));
             
-            using (DbTransaction transaction = this.storage.StartTransaction())
-            {
-                IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
-
-                await (await CreateStorageEngine()).UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
-
-                UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                    this.storage.UpdateObject(id, "{'mno':'pqr'}", initialObject[0].Version));
-            }
-
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
-
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
-        }
-
-        [Fact]
-        public async Task DeleteObject_Success()
-        {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
-
-            await this.storage.DeleteObject(id, initialObject[0].Version);
-
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
             Assert.Equal(0, objects.Count);
-        }
-
-        [Fact]
-        public async Task DeleteObject_VersionConflict()
-        {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
-
-            UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                this.storage.DeleteObject(id, versions[0]));
-
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
-
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
-            Assert.Equal(initialObject[0].Version, objects[0].Version);
-            Assert.Equal(id, exception.Id);
+            Assert.Equal(ids[0], exception.Id);
             Assert.Equal(versions[0], exception.Version);
         }
 
         [Fact]
-        public async Task DeleteObject_RepeatableReadConflict()
+        public async Task UpdateObject_ConflictWrongVersion()
         {
-            long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            ByteString version1 = await this.storage.UpdateObject(ids[0], account, "{'abc':'def'}", ByteString.Empty);
 
-            using (DbTransaction transaction = this.storage.StartTransaction())
-            {
-                IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+            UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+                this.storage.UpdateObject(ids[0], account, "{'ghi':'jkl'}", versions[0]));
 
-                await (await CreateStorageEngine()).UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
-
-                UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                    this.storage.DeleteObject(id, initialObject[0].Version));
-            }
-
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
             Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
+            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(versions[0], exception.Version);
         }
-
-        #endregion
 
         [Fact]
-        public async Task StartTransaction_Atomicity()
+        public async Task UpdateObject_ConflictObjectAlreadyExists()
         {
-            long id1 = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
-            IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id1 });
+            ByteString version1 = await this.storage.UpdateObject(ids[0], account, "{'abc':'def'}", ByteString.Empty);
 
-            long id2;
-            using (this.storage.StartTransaction())
-            {
-                id2 = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+            UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+                this.storage.UpdateObject(ids[0], account, "{'ghi':'jkl'}", ByteString.Empty));
 
-                UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                    this.storage.UpdateObject(id1, "{'ghi':'jkl'}", versions[0]));
-            }
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
-            IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(accounts[0], new[] { id1 });
-            IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(accounts[0], new[] { id2 });
-
-            Assert.Equal(1, object1.Count);
-            AssertObject(object1[0], id1, DataObjectType.Transaction, "{'abc':'def'}");
-            Assert.Equal(initialObject[0].Version, object1[0].Version);
-            Assert.Equal(0, object2.Count);
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(ByteString.Empty, exception.Version);
         }
+
+        //[Fact]
+        //public async Task CreateObject_Success()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(1, objects.Count);
+        //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
+        //}
+
+        //[Fact]
+        //public async Task UpdateObject_Success()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+        //    IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    ByteString version = await this.storage.UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(1, objects.Count);
+        //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
+        //    Assert.NotEqual(initialObject[0].Version, objects[0].Version);
+        //    Assert.NotEqual(version, objects[0].Version);
+        //}
+
+        //[Fact]
+        //public async Task UpdateObject_VersionConflict()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+        //    IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+        //        this.storage.UpdateObject(id, "{'ghi':'jkl'}", versions[0]));
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(1, objects.Count);
+        //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
+        //    Assert.Equal(initialObject[0].Version, objects[0].Version);
+        //    Assert.Equal(id, exception.Id);
+        //    Assert.Equal(versions[0], exception.Version);
+        //}
+
+        //[Fact]
+        //public async Task UpdateObject_RepeatableReadConflict()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+
+        //    using (DbTransaction transaction = this.storage.StartTransaction())
+        //    {
+        //        IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //        await (await CreateStorageEngine()).UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
+
+        //        UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+        //            this.storage.UpdateObject(id, "{'mno':'pqr'}", initialObject[0].Version));
+        //    }
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(1, objects.Count);
+        //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
+        //}
+
+        //[Fact]
+        //public async Task DeleteObject_Success()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+        //    IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    await this.storage.DeleteObject(id, initialObject[0].Version);
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(0, objects.Count);
+        //}
+
+        //[Fact]
+        //public async Task DeleteObject_VersionConflict()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+        //    IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+        //        this.storage.DeleteObject(id, versions[0]));
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(1, objects.Count);
+        //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'abc':'def'}");
+        //    Assert.Equal(initialObject[0].Version, objects[0].Version);
+        //    Assert.Equal(id, exception.Id);
+        //    Assert.Equal(versions[0], exception.Version);
+        //}
+
+        //[Fact]
+        //public async Task DeleteObject_RepeatableReadConflict()
+        //{
+        //    long id = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+
+        //    using (DbTransaction transaction = this.storage.StartTransaction())
+        //    {
+        //        IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //        await (await CreateStorageEngine()).UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
+
+        //        UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+        //            this.storage.DeleteObject(id, initialObject[0].Version));
+        //    }
+
+        //    IReadOnlyList<DataObject> objects = await this.storage.GetObjects(accounts[0], new[] { id });
+
+        //    Assert.Equal(1, objects.Count);
+        //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'ghi':'jkl'}");
+        //}
+
+        //#endregion
+
+        //[Fact]
+        //public async Task StartTransaction_Atomicity()
+        //{
+        //    long id1 = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+        //    IReadOnlyList<DataObject> initialObject = await this.storage.GetObjects(accounts[0], new[] { id1 });
+
+        //    long id2;
+        //    using (this.storage.StartTransaction())
+        //    {
+        //        id2 = await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'abc':'def'}");
+
+        //        UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+        //            this.storage.UpdateObject(id1, "{'ghi':'jkl'}", versions[0]));
+        //    }
+
+        //    IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(accounts[0], new[] { id1 });
+        //    IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(accounts[0], new[] { id2 });
+
+        //    Assert.Equal(1, object1.Count);
+        //    AssertObject(object1[0], id1, DataObjectType.Transaction, "{'abc':'def'}");
+        //    Assert.Equal(initialObject[0].Version, object1[0].Version);
+        //    Assert.Equal(0, object2.Count);
+        //}
 
         //[Fact]
         //public async Task StartTransaction_Serializable()
@@ -188,8 +298,8 @@ namespace Wistap.Tests
         //        await (await CreateStorageEngine()).UpdateObject(id, "{'ghi':'jkl'}", initialObject[0].Version);
 
         //        await this.storage.GetObjects(accounts[0], new[] { id });
-                
-                
+
+
 
         //        await this.storage.CreateObject(accounts[0], DataObjectType.Transaction, "{'123':'456'}");
         //        transaction.Commit();
@@ -227,7 +337,7 @@ namespace Wistap.Tests
         //    Assert.Equal(1, objects.Count);
         //    AssertObject(objects[0], id, DataObjectType.Transaction, "{'123':'789'}");
         //}
-        
+
 
         //[Fact]
         //public async Task StartTransaction_RepeatableRead2()
@@ -269,11 +379,21 @@ namespace Wistap.Tests
             return engine;
         }
 
-        private static void AssertObject(DataObject dataObject, long id, DataObjectType type, string payload)
+        private static void AssertObject(DataObject dataObject, ByteString id, string payload, ByteString version)
         {
             Assert.Equal(id, dataObject.Id);
-            Assert.Equal(DataObjectType.Transaction, dataObject.Type);
-            Assert.Equal(JObject.Parse(payload).ToString(Newtonsoft.Json.Formatting.None), JObject.Parse(dataObject.Payload).ToString(Newtonsoft.Json.Formatting.None));
+
+            if (payload == null)
+            {
+                Assert.Null(dataObject.Payload);
+            }
+            else
+            {
+                Assert.NotNull(dataObject.Payload);
+                Assert.Equal(JObject.Parse(payload).ToString(Newtonsoft.Json.Formatting.None), JObject.Parse(dataObject.Payload).ToString(Newtonsoft.Json.Formatting.None));
+            }
+
+            Assert.Equal(version, dataObject.Version);
         }
 
         #endregion

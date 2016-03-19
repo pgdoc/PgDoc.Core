@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using NpgsqlTypes;
+using System.Linq;
 
 namespace Wistap
 {
@@ -28,32 +29,33 @@ namespace Wistap
 
         #region Operations
 
-        public async Task<long> CreateObject(ByteString account, DataObjectType type, string payload)
+        //public async Task<long> CreateObject(ByteString account, DataObjectType type, string payload)
+        //{
+        //    const string queryText =
+        //        @"SELECT wistap.create_object(@account_key, @type, @payload) AS result;";
+
+        //    using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
+        //    {
+        //        command.Parameters.Add(new NpgsqlParameter("@account_key", account.ToByteArray()));
+        //        command.Parameters.Add(new NpgsqlParameter("@type", (short)type));
+        //        command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, JObject.Parse(payload));
+
+        //        IReadOnlyList<long> result = await ExecuteQuery(command, reader => (long)reader["result"]);
+
+        //        return result[0];
+        //    }
+        //}
+
+        public async Task<ByteString> UpdateObject(ByteString id, ByteString account, string payload, ByteString version)
         {
             const string queryText =
-                @"SELECT wistap.create_object(@account_key, @type, @payload) AS result;";
+                @"SELECT wistap.update_object(@id, @account, @payload, @version) AS result;";
 
             using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
             {
-                command.Parameters.Add(new NpgsqlParameter("@account_key", account.ToByteArray()));
-                command.Parameters.Add(new NpgsqlParameter("@type", (short)type));
-                command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, JObject.Parse(payload));
-
-                IReadOnlyList<long> result = await ExecuteQuery(command, reader => (long)reader["result"]);
-
-                return result[0];
-            }
-        }
-
-        public async Task<ByteString> UpdateObject(long id, string payload, ByteString version)
-        {
-            const string queryText =
-                @"SELECT wistap.update_object(@id, @payload, @version) AS result;";
-
-            using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
-            {
-                command.Parameters.Add(new NpgsqlParameter("@id", id));
-                command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, JObject.Parse(payload));
+                command.Parameters.AddWithValue("@id", NpgsqlDbType.Uuid, new Guid(id.ToByteArray()));
+                command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
+                command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, payload != null ? (object)JObject.Parse(payload) : DBNull.Value);
                 command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
 
                 try
@@ -72,36 +74,36 @@ namespace Wistap
             }
         }
 
-        public async Task DeleteObject(long id, ByteString version)
+        //public async Task DeleteObject(long id, ByteString version)
+        //{
+        //    const string queryText =
+        //        @"SELECT wistap.delete_object(@id, @version) AS result;";
+
+        //    using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
+        //    {
+        //        command.Parameters.Add(new NpgsqlParameter("@id", id));
+        //        command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
+
+        //        try
+        //        {
+        //            IReadOnlyList<bool> notFound = await ExecuteQuery(command, reader => reader["result"] is DBNull);
+
+        //            if (notFound[0])
+        //                throw new UpdateConflictException(id, version);
+        //        }
+        //        catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
+        //        {
+        //            throw new UpdateConflictException(id, version);
+        //        }
+        //    }
+        //}
+
+        public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<ByteString> ids)
         {
             const string queryText =
-                @"SELECT wistap.delete_object(@id, @version) AS result;";
+                @"SELECT id, payload, version FROM wistap.get_objects(@account, @ids);";
 
-            using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
-            {
-                command.Parameters.Add(new NpgsqlParameter("@id", id));
-                command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
-
-                try
-                {
-                    IReadOnlyList<bool> notFound = await ExecuteQuery(command, reader => reader["result"] is DBNull);
-
-                    if (notFound[0])
-                        throw new UpdateConflictException(id, version);
-                }
-                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
-                {
-                    throw new UpdateConflictException(id, version);
-                }
-            }
-        }
-
-        public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<long> ids)
-        {
-            const string queryText =
-                @"SELECT id, type, payload, version FROM wistap.get_objects(@account, @ids);";
-
-            List<long> idList = new List<long>(ids);
+            List<Guid> idList = ids.Select(id => new Guid(id.ToByteArray())).ToList();
 
             if (idList.Count == 0)
                 return new DataObject[0];
@@ -109,11 +111,14 @@ namespace Wistap
             using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
             {
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
-                command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Bigint, idList);
+                command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
                 return await ExecuteQuery(
                     command,
-                    reader => new DataObject((long)reader["id"], (DataObjectType)(short)reader["type"], (string)reader["payload"], new ByteString((byte[])reader["version"])));
+                    reader => new DataObject(
+                        new ByteString(((Guid)reader["id"]).ToByteArray()),
+                        reader["payload"] is DBNull ? null : (string)reader["payload"],
+                        new ByteString((byte[])reader["version"])));
             }
         }
 
