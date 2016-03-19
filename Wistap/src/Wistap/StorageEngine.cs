@@ -12,6 +12,7 @@ namespace Wistap
 {
     public class StorageEngine : IStorageEngine
     {
+        private const string TransactionConflictCode = "40001";
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
 
@@ -38,12 +39,19 @@ namespace Wistap
                 command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, payload != null ? (object)JObject.Parse(payload) : DBNull.Value);
                 command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
 
-                IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader["result"] is DBNull ? null : new ByteString((byte[])reader["result"]));
+                try
+                {
+                    IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader["result"] is DBNull ? null : new ByteString((byte[])reader["result"]));
 
-                if (newVersion[0] == null)
+                    if (newVersion[0] == null)
+                        throw new UpdateConflictException(id, version);
+                    else
+                        return newVersion[0];
+                }
+                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
+                {
                     throw new UpdateConflictException(id, version);
-                else
-                    return newVersion[0];
+                }
             }
         }
 
