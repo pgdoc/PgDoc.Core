@@ -1,17 +1,18 @@
 ﻿using System;
+using System.Security.Cryptography;
 using System.Threading;
 
 namespace Wistap
 {
     public class ObjectId : IEquatable<ObjectId>
     {
-        private static ThreadLocal<Random> random = new ThreadLocal<Random>(() => new Random());
+        private static readonly ThreadLocal<RandomNumberGenerator> random = new ThreadLocal<RandomNumberGenerator>(() => RandomNumberGenerator.Create());
 
         public ObjectId(Guid id)
         {
             this.Value = id;
             byte[] byteArray = id.ToByteArray();
-            this.Type = (DataObjectType)((byteArray[1] << 8) | byteArray[0]);
+            this.Type = (DataObjectType)((byteArray[3] << 8) | byteArray[2]);
         }
 
         public Guid Value { get; }
@@ -21,10 +22,10 @@ namespace Wistap
         public static ObjectId New(short type)
         {
             byte[] data = new byte[16];
-            random.Value.NextBytes(data);
+            random.Value.GetBytes(data);
 
-            data[0] = (byte)(type & 0xFF);
-            data[1] = (byte)(type >> 8);
+            data[2] = (byte)(type & 0xFF);
+            data[3] = (byte)(type >> 8);
 
             return new ObjectId(new Guid(data));
         }
