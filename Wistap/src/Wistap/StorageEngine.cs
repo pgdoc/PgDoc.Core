@@ -29,11 +29,9 @@ namespace Wistap
 
         public async Task<ByteString> UpdateObject(ObjectId id, ByteString account, string payload, ByteString version)
         {
-            const string queryText =
-                @"SELECT wistap.update_object(@id, @account, @payload, @version) AS result;";
-
-            using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_object", connection, this.transaction))
             {
+                command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@id", NpgsqlDbType.Uuid, id.Value);
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
                 command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, payload != null ? (object)JObject.Parse(payload) : DBNull.Value);
@@ -41,7 +39,7 @@ namespace Wistap
 
                 try
                 {
-                    IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader["result"] is DBNull ? null : new ByteString((byte[])reader["result"]));
+                    IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader[0] is DBNull ? null : new ByteString((byte[])reader[0]));
 
                     if (newVersion[0] == null)
                         throw new UpdateConflictException(id, version);
@@ -57,16 +55,14 @@ namespace Wistap
 
         public async Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<ObjectId> ids)
         {
-            const string queryText =
-                @"SELECT id, payload, version FROM wistap.get_objects(@account, @ids);";
-
             List<Guid> idList = ids.Select(id => id.Value).ToList();
 
             if (idList.Count == 0)
                 return new DataObject[0];
 
-            using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("wistap.get_objects", connection, this.transaction))
             {
+                command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
@@ -83,9 +79,9 @@ namespace Wistap
 
                     foreach (Guid id in idList)
                     {
-                        ObjectId byteStringId = new ObjectId(id);
-                        if (!result.ContainsKey(byteStringId))
-                            result.Add(byteStringId, new DataObject(byteStringId, null, ByteString.Empty));
+                        ObjectId objectId = new ObjectId(id);
+                        if (!result.ContainsKey(objectId))
+                            result.Add(objectId, new DataObject(objectId, null, ByteString.Empty));
                     }
 
                     return result.Values.ToList().AsReadOnly();
