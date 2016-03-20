@@ -14,9 +14,9 @@ namespace Wistap
 {
     public class StorageEngine : IStorageEngine
     {
-        private const string TransactionConflictCode = "40001";
-        private const string UnableToLockCode = "55P03";
-        private const string InsertConflictCore = "23505";
+        private const string UpdateConflictCode = "40001";
+        private const string InsertConflictCode = "23505";
+        private const string UnableToAcquireLockCode = "55P03";
 
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
@@ -70,7 +70,7 @@ namespace Wistap
                     return new ByteString(newVersion);
                 }
                 catch (NpgsqlException exception)
-                    when (exception.Code == TransactionConflictCode || exception.Code == UnableToLockCode || exception.Code == InsertConflictCore)
+                    when (exception.Code == UpdateConflictCode || exception.Code == UnableToAcquireLockCode || exception.Code == InsertConflictCode)
                 {
                     throw new UpdateConflictException(objectList[0].Id, objectList[0].Version);
                 }
@@ -110,7 +110,7 @@ namespace Wistap
 
                     return result.Values.ToList().AsReadOnly();
                 }
-                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode || exception.Code == UnableToLockCode)
+                catch (NpgsqlException exception) when (exception.Code == UpdateConflictCode || exception.Code == UnableToAcquireLockCode)
                 {
                     throw new UpdateConflictException(new ObjectId(idList[0]), null);
                 }
