@@ -33,7 +33,7 @@ namespace Wistap.Tests
         #region UpdateObject
 
         [Fact]
-        public async Task UpdateObject_EmptyToValue()
+        public async Task UpdateObjects_EmptyToValue()
         {
             ByteString version = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
@@ -45,7 +45,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_EmptyToNull()
+        public async Task UpdateObjects_EmptyToNull()
         {
             ByteString version = await UpdateObject(null, ByteString.Empty);
 
@@ -57,7 +57,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_ValueToValue()
+        public async Task UpdateObjects_ValueToValue()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
             ByteString version2 = await UpdateObject("{'ghi':'jkl'}", version1);
@@ -71,7 +71,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_ValueToNull()
+        public async Task UpdateObjects_ValueToNull()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
             ByteString version2 = await UpdateObject(null, version1);
@@ -85,7 +85,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_NullToValue()
+        public async Task UpdateObjects_NullToValue()
         {
             ByteString version1 = await UpdateObject(null, ByteString.Empty);
             ByteString version2 = await UpdateObject("{'ghi':'jkl'}", version1);
@@ -99,7 +99,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_NullToNull()
+        public async Task UpdateObjects_NullToNull()
         {
             ByteString version1 = await UpdateObject(null, ByteString.Empty);
             ByteString version2 = await UpdateObject(null, version1);
@@ -113,7 +113,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_ConflictObjectDoesNotExist()
+        public async Task UpdateObjects_ConflictObjectDoesNotExist()
         {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 UpdateObject("{'abc':'def'}", wrongVersion));
@@ -127,7 +127,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_ConflictWrongVersion()
+        public async Task UpdateObjects_ConflictWrongVersion()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
@@ -143,7 +143,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_ConflictObjectAlreadyExists()
+        public async Task UpdateObjects_ConflictObjectAlreadyExists()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
@@ -159,13 +159,13 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_ConflictWrongAccount()
+        public async Task UpdateObjects_ConflictWrongAccount()
         {
             ByteString wrongAccount = new ByteString(account.ToByteArray().Reverse());
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                this.storage.UpdateObject(ids[0], wrongAccount, "{'ghi':'jkl'}", version1));
+                this.storage.UpdateObject(wrongAccount, ids[0], "{'ghi':'jkl'}", version1));
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
@@ -176,7 +176,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_MultipleUpdateSuccess()
+        public async Task UpdateObjects_MultipleUpdateSuccess()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
@@ -192,7 +192,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_MultipleUpdateConflict()
+        public async Task UpdateObjects_MultipleUpdateConflict()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
@@ -227,7 +227,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task GetRecords_NoObject()
+        public async Task GetObjects_NoObject()
         {
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new ObjectId[0]);
 
@@ -245,7 +245,7 @@ namespace Wistap.Tests
 
             using (this.storage.StartTransaction())
             {
-                await this.storage.UpdateObject(ids[1], account, "{'ghi':'jkl'}", ByteString.Empty);
+                await this.storage.UpdateObject(account, ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
                 UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                     UpdateObject("{'mno':'pqr'}", wrongVersion));
@@ -261,7 +261,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_TransactionConflict()
+        public async Task UpdateObjects_TransactionConflict()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
             ByteString version2;
@@ -273,7 +273,7 @@ namespace Wistap.Tests
                 await this.storage.GetObjects(account, new[] { ids[1] });
 
                 // Update the object with transaction 2
-                version2 = await (await CreateStorageEngine()).UpdateObject(ids[0], account, "{'ghi':'jkl'}", version1);
+                version2 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1);
 
                 // Try to update the object with transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
@@ -289,7 +289,7 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObject_UnableToLock()
+        public async Task UpdateObjects_UnableToLock()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
             UpdateConflictException exception;
@@ -301,7 +301,7 @@ namespace Wistap.Tests
 
                 // Try to update the object with transaction 2
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(async () =>
-                    await (await CreateStorageEngine()).UpdateObject(ids[0], account, "{'ghi':'jkl'}", version1));
+                    await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1));
             }
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
@@ -325,7 +325,7 @@ namespace Wistap.Tests
                 await this.storage.GetObjects(account, new[] { ids[1] });
 
                 // Update the object with transaction 2
-                version2 = await (await CreateStorageEngine()).UpdateObject(ids[0], account, "{'ghi':'jkl'}", version1);
+                version2 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1);
 
                 // Try to read the stale modified object from transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
@@ -388,7 +388,7 @@ namespace Wistap.Tests
 
         private async Task<ByteString> UpdateObject(string payload, ByteString version)
         {
-            return await this.storage.UpdateObject(ids[0], account, payload, version);
+            return await this.storage.UpdateObject(account, ids[0], payload, version);
         }
 
         private static void AssertObject(DataObject dataObject, ObjectId id, string payload, ByteString version)
