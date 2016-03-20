@@ -7,6 +7,8 @@ using Newtonsoft.Json.Linq;
 using Npgsql;
 using NpgsqlTypes;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Wistap
 {
@@ -27,28 +29,48 @@ namespace Wistap
                 await connection.OpenAsync();
         }
 
-        public async Task<ByteString> UpdateObject(ObjectId id, ByteString account, string payload, ByteString version)
+        public async Task<ByteString> UpdateObjects(ByteString account, IEnumerable<DataObject> objects)
         {
-            using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_object", connection, this.transaction))
+            IList<DataObject> objectList = objects.ToList();
+            JArray jsonObjects = new JArray(objectList.Select(item => JObject.FromObject(new
+            {
+                k = item.Id.ToString(),
+                p = item.Payload == null ? null : JToken.Parse(item.Payload).ToString(),
+                v = item.Version.ToString()
+            })).ToArray());
+
+            byte[] newVersion;
+
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] md5Hash = md5.ComputeHash(Encoding.UTF8.GetBytes(jsonObjects.ToString(Newtonsoft.Json.Formatting.None)));
+                newVersion = new byte[8];
+                Buffer.BlockCopy(md5Hash, 0, newVersion, 0, 8);
+            }
+            
+            using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_objects", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@id", NpgsqlDbType.Uuid, id.Value);
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
-                command.Parameters.AddWithValue("@payload", NpgsqlDbType.Jsonb, payload != null ? (object)JObject.Parse(payload) : DBNull.Value);
-                command.Parameters.Add(new NpgsqlParameter("@version", version.ToByteArray()));
+                command.Parameters.AddWithValue("@objects", NpgsqlDbType.Jsonb, jsonObjects);
+                command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
                 try
                 {
-                    IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader[0] is DBNull ? null : new ByteString((byte[])reader[0]));
+                    //IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader[0] is DBNull ? null : new ByteString((byte[])reader[0]));
 
-                    if (newVersion[0] == null)
-                        throw new UpdateConflictException(id, version);
-                    else
-                        return newVersion[0];
+                    IReadOnlyList<DataObject> conflicts = await ExecuteQuery(
+                        command,
+                        reader => objectList.First(item => item.Id.Value.Equals((Guid)reader["id"])));
+
+                    if (conflicts.Count > 0)
+                        throw new UpdateConflictException(conflicts[0].Id, conflicts[0].Version);
+
+                    return new ByteString(newVersion);
                 }
                 catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
                 {
-                    throw new UpdateConflictException(id, version);
+                    throw new UpdateConflictException(objectList[0].Id, objectList[0].Version);
                 }
             }
         }

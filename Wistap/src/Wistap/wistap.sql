@@ -14,31 +14,48 @@ CREATE TABLE wistap.object
 ---------------------------------------------------
 --- Update the payload of an existing object
 
-CREATE OR REPLACE FUNCTION wistap.update_object(id uuid, account bytea, payload jsonb, version bytea)
-RETURNS bytea
-AS $$ #variable_conflict use_variable
-DECLARE
-    result bytea;
-BEGIN
+CREATE OR REPLACE FUNCTION wistap.update_objects(account bytea, objects jsonb, version bytea)
+RETURNS TABLE (id uuid)
+AS $$ #variable_conflict use_variable BEGIN
 
-    IF version = E'\\x' THEN
-        INSERT INTO wistap.object (id, account, payload, version)
-        VALUES (
-            id,
-            account,
-            payload,
-            substring(decode(md5(coalesce(payload::text, '')), 'hex'), 1, 8))
-        ON CONFLICT ON CONSTRAINT object_pkey DO NOTHING
-        RETURNING object.version INTO result;
-    ELSE
-        UPDATE wistap.object
-        SET payload = payload,
-            version = substring(decode(md5(coalesce(payload::text, '') || encode(object.version, 'hex')), 'hex'), 1, 8)
-        WHERE object.id = id AND object.version = version
-        RETURNING object.version INTO result;
+    CREATE LOCAL TEMP TABLE modified_object
+    ON COMMIT DROP AS
+    SELECT  (json_object ->> 'k')::uuid as id,
+            CASE WHEN json_object ->> 'p' IS NULL THEN NULL ELSE (json_object ->> 'p')::jsonb END as payload,
+            decode((json_object ->> 'v')::text, 'hex') as version
+    FROM    jsonb_array_elements(objects) as json_object;
+
+    -- This query returns conflicting rows, the result must be empty
+
+    RETURN QUERY
+    SELECT modified_object.id
+    FROM modified_object
+    LEFT OUTER JOIN (
+      SELECT object.id, object.version
+      FROM modified_object, wistap.object
+      WHERE object.id = modified_object.id AND object.account = account
+      FOR UPDATE OF object NOWAIT
+    ) AS existing_object
+    ON existing_object.id = modified_object.id
+    WHERE modified_object.version <> COALESCE(existing_object.version, E'\\x');
+
+    IF FOUND THEN
+      RETURN;
     END IF;
 
-    RETURN result;
+    -- Update or insert the records
+
+    INSERT INTO wistap.object (id, account, payload, version)
+    SELECT modified_object.id,
+           account,
+           modified_object.payload,
+           version
+    FROM modified_object
+    ON CONFLICT ON CONSTRAINT object_pkey DO UPDATE
+    SET payload = excluded.payload,
+        version = excluded.version;
+
+    DROP TABLE modified_object;
 
 END $$ LANGUAGE plpgsql;
 
