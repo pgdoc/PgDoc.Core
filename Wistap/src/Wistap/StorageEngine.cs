@@ -15,6 +15,7 @@ namespace Wistap
     public class StorageEngine : IStorageEngine
     {
         private const string TransactionConflictCode = "40001";
+        private const string UnableToLockCode = "55P03";
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
 
@@ -47,7 +48,7 @@ namespace Wistap
                 newVersion = new byte[8];
                 Buffer.BlockCopy(md5Hash, 0, newVersion, 0, 8);
             }
-            
+
             using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_objects", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
@@ -57,8 +58,6 @@ namespace Wistap
 
                 try
                 {
-                    //IReadOnlyList<ByteString> newVersion = await ExecuteQuery(command, reader => reader[0] is DBNull ? null : new ByteString((byte[])reader[0]));
-
                     IReadOnlyList<DataObject> conflicts = await ExecuteQuery(
                         command,
                         reader => objectList.First(item => item.Id.Value.Equals((Guid)reader["id"])));
@@ -68,7 +67,7 @@ namespace Wistap
 
                     return new ByteString(newVersion);
                 }
-                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
+                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode || exception.Code == UnableToLockCode)
                 {
                     throw new UpdateConflictException(objectList[0].Id, objectList[0].Version);
                 }
@@ -108,7 +107,7 @@ namespace Wistap
 
                     return result.Values.ToList().AsReadOnly();
                 }
-                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode)
+                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode || exception.Code == UnableToLockCode)
                 {
                     throw new UpdateConflictException(new ObjectId(idList[0]), null);
                 }

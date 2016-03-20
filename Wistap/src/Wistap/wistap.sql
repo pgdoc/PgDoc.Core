@@ -43,7 +43,7 @@ AS $$ #variable_conflict use_variable BEGIN
       RETURN;
     END IF;
 
-    -- Update or insert the records
+    -- Update or insert the objects
 
     INSERT INTO wistap.object (id, account, payload, version)
     SELECT modified_object.id,
@@ -70,7 +70,7 @@ AS $$ #variable_conflict use_variable BEGIN
     SELECT object.id, object.payload, object.version
     FROM wistap.object, UNNEST(ids) AS object_id
     WHERE object.id = object_id AND object.account = account
-    FOR SHARE;
+    FOR SHARE OF object NOWAIT;
 
 END $$ LANGUAGE plpgsql;
 
