@@ -313,6 +313,33 @@ namespace Wistap.Tests
         }
 
         [Fact]
+        public async Task UpdateObjects_InsertConflict()
+        {
+            ByteString version1;
+            UpdateConflictException exception;
+
+            using (DbTransaction transaction = this.storage.StartTransaction())
+            {
+                // Lock the object with transaction 1
+                await this.storage.GetObjects(account, new[] { ids[1] });
+
+                // Insert the object with transaction 2
+                version1 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'abc': 'def'}", ByteString.Empty);
+
+                // Try to insert the object with transaction 1
+                exception = await Assert.ThrowsAsync<UpdateConflictException>(async () =>
+                    await UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
+            }
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], "{'abc': 'def'}", version1);
+            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(ByteString.Empty, exception.Version);
+        }
+
+        [Fact]
         public async Task GetObjects_TransactionConflict()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);

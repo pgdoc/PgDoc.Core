@@ -43,7 +43,15 @@ AS $$ #variable_conflict use_variable BEGIN
       RETURN;
     END IF;
 
-    -- Update or insert the objects
+    -- Update existing objects
+
+    UPDATE wistap.object
+    SET payload = modified_object.payload,
+        version = version
+    FROM modified_object
+    WHERE object.id = modified_object.id AND modified_object.version <> E'\\x';
+
+    -- Insert new objects
 
     INSERT INTO wistap.object (id, account, payload, version)
     SELECT modified_object.id,
@@ -51,9 +59,7 @@ AS $$ #variable_conflict use_variable BEGIN
            modified_object.payload,
            version
     FROM modified_object
-    ON CONFLICT ON CONSTRAINT object_pkey DO UPDATE
-    SET payload = excluded.payload,
-        version = excluded.version;
+    WHERE modified_object.version = E'\\x';
 
     DROP TABLE modified_object;
 

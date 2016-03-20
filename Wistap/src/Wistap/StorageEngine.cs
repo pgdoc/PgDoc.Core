@@ -16,6 +16,8 @@ namespace Wistap
     {
         private const string TransactionConflictCode = "40001";
         private const string UnableToLockCode = "55P03";
+        private const string InsertConflictCore = "23505";
+
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
 
@@ -67,7 +69,8 @@ namespace Wistap
 
                     return new ByteString(newVersion);
                 }
-                catch (NpgsqlException exception) when (exception.Code == TransactionConflictCode || exception.Code == UnableToLockCode)
+                catch (NpgsqlException exception)
+                    when (exception.Code == TransactionConflictCode || exception.Code == UnableToLockCode || exception.Code == InsertConflictCore)
                 {
                     throw new UpdateConflictException(objectList[0].Id, objectList[0].Version);
                 }
