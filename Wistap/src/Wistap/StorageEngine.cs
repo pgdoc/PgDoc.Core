@@ -97,21 +97,6 @@ namespace Wistap
             }
         }
 
-        //public async Task EnsureObject(long ids, ByteString version)
-        //{
-        //    const string queryText =
-        //        @"SELECT id, version FROM wistap.ensure_objects(@id);";
-
-        //    using (NpgsqlCommand command = new NpgsqlCommand(queryText, connection, this.transaction))
-        //    {
-        //        command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Bigint, new[] { ids });
-
-        //        IReadOnlyList<Tuple<long, ByteString>> records = await ExecuteQuery(
-        //            command,
-        //            reader => new DataObject((long)reader["id"], (DataObjectType)(short)reader["type"], (string)reader["payload"], new ByteString((byte[])reader["version"])));
-        //    }
-        //}
-
         public DbTransaction StartTransaction()
         {
             this.transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead);
