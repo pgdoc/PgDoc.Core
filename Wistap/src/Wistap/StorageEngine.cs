@@ -32,14 +32,18 @@ namespace Wistap
                 await connection.OpenAsync();
         }
 
-        public async Task<ByteString> UpdateObjects(ByteString account, IEnumerable<DataObject> objects)
+        public async Task<ByteString> UpdateObjects(ByteString account, IEnumerable<DataObject> updateObjects, IEnumerable<DataObject> checkObjects)
         {
-            IList<DataObject> objectList = objects.ToList();
+            IList<Tuple<DataObject, bool>> objectList = updateObjects
+                .Select(item => Tuple.Create(item, false))
+                .Concat(checkObjects.Select(item => Tuple.Create(item, true))).ToList();
+
             JArray jsonObjects = new JArray(objectList.Select(item => JObject.FromObject(new
             {
-                k = item.Id.ToString(),
-                p = item.Payload == null ? null : JToken.Parse(item.Payload).ToString(),
-                v = item.Version.ToString()
+                i = item.Item1.Id.ToString(),
+                p = item.Item1.Payload == null || item.Item2 ? null : JToken.Parse(item.Item1.Payload).ToString(),
+                v = item.Item1.Version.ToString(),
+                c = item.Item2 ? 1 : 0
             })).ToArray());
 
             byte[] newVersion;
@@ -62,7 +66,7 @@ namespace Wistap
                 {
                     IReadOnlyList<DataObject> conflicts = await ExecuteQuery(
                         command,
-                        reader => objectList.First(item => item.Id.Value.Equals((Guid)reader["id"])));
+                        reader => objectList.First(item => item.Item1.Id.Value.Equals((Guid)reader["id"])).Item1);
 
                     if (conflicts.Count > 0)
                         throw new UpdateConflictException(conflicts[0].Id, conflicts[0].Version);
@@ -72,7 +76,7 @@ namespace Wistap
                 catch (NpgsqlException exception)
                     when (exception.Code == UpdateConflictCode || exception.Code == UnableToAcquireLockCode || exception.Code == InsertConflictCode)
                 {
-                    throw new UpdateConflictException(objectList[0].Id, objectList[0].Version);
+                    throw new UpdateConflictException(objectList[0].Item1.Id, objectList[0].Item1.Version);
                 }
             }
         }

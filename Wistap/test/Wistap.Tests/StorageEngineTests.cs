@@ -57,6 +57,18 @@ namespace Wistap.Tests
         }
 
         [Fact]
+        public async Task UpdateObjects_EmptyCheck()
+        {
+            ByteString version = await this.storage.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "['ignored']", ByteString.Empty) });
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], null, ByteString.Empty);
+            Assert.Equal(8, version.Value.Count);
+        }
+
+        [Fact]
         public async Task UpdateObjects_ValueToValue()
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -85,6 +97,20 @@ namespace Wistap.Tests
         }
 
         [Fact]
+        public async Task UpdateObjects_ValueCheck()
+        {
+            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "['ignored']", version1) });
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            Assert.Equal(8, version2.Value.Count);
+            Assert.NotEqual(version1, version2);
+        }
+
+        [Fact]
         public async Task UpdateObjects_NullToValue()
         {
             ByteString version1 = await UpdateObject(null, ByteString.Empty);
@@ -108,6 +134,20 @@ namespace Wistap.Tests
 
             Assert.Equal(1, objects.Count);
             AssertObject(objects[0], ids[0], null, version2);
+            Assert.Equal(8, version2.Value.Count);
+            Assert.NotEqual(version1, version2);
+        }
+
+        [Fact]
+        public async Task UpdateObjects_NullCheck()
+        {
+            ByteString version1 = await UpdateObject(null, ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "['ignored']", version1) });
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects[0], ids[0], null, version1);
             Assert.Equal(8, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
@@ -176,37 +216,69 @@ namespace Wistap.Tests
         }
 
         [Fact]
-        public async Task UpdateObjects_MultipleUpdateSuccess()
+        public async Task UpdateObjects_MultipleObjectsSuccess()
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await this.storage.UpdateObject(account, ids[0], "{'abc':'def'}", ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateObject(account, ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
-            ByteString version2 = await this.storage.UpdateObjects(account,
-                new DataObject(ids[1], "{'ghi':'jkl'}", ByteString.Empty),
-                new DataObject(ids[0], "{'nmo':'pqr'}", version1));
+            ByteString version3 = await this.storage.UpdateObjects(account,
+                new DataObject[]
+                {
+                    new DataObject(ids[0], "{'v':'1'}", version1),
+                    new DataObject(ids[2], "{'v':'2'}", ByteString.Empty)
+                },
+                new DataObject[]
+                {
+                    new DataObject(ids[1], "{'v':'3'}", version2),
+                    new DataObject(ids[3], "{'v':'4'}", ByteString.Empty)
+                });
 
             IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(account, new[] { ids[0] });
             IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(account, new[] { ids[1] });
+            IReadOnlyList<DataObject> object3 = await this.storage.GetObjects(account, new[] { ids[2] });
+            IReadOnlyList<DataObject> object4 = await this.storage.GetObjects(account, new[] { ids[3] });
 
-            AssertObject(object1[0], ids[0], "{'nmo':'pqr'}", version2);
+            AssertObject(object1[0], ids[0], "{'v':'1'}", version3);
             AssertObject(object2[0], ids[1], "{'ghi':'jkl'}", version2);
+            AssertObject(object3[0], ids[2], "{'v':'2'}", version3);
+            AssertObject(object4[0], ids[3], null, ByteString.Empty);
         }
 
         [Fact]
-        public async Task UpdateObjects_MultipleUpdateConflict()
+        public async Task UpdateObjects_MultipleObjectsCheckConflict()
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await this.storage.UpdateObject(account, ids[0], "{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 this.storage.UpdateObjects(account,
-                    new DataObject(ids[1], "{'ghi':'jkl'}", ByteString.Empty),
-                    new DataObject(ids[0], "{'nmo':'pqr'}", wrongVersion)));
+                    new DataObject[] { new DataObject(ids[0], "{'ghi':'jkl'}", version1) },
+                    new DataObject[] { new DataObject(ids[1], "{'mno':'pqr'}", wrongVersion) }));
 
             IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(account, new[] { ids[0] });
             IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(account, new[] { ids[1] });
 
             AssertObject(object1[0], ids[0], "{'abc':'def'}", version1);
             AssertObject(object2[0], ids[1], null, ByteString.Empty);
-            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(ids[1], exception.Id);
+            Assert.Equal(wrongVersion, exception.Version);
+        }
+
+        [Fact]
+        public async Task UpdateObjects_MultipleObjectsUpdateConflict()
+        {
+            ByteString version1 = await this.storage.UpdateObject(account, ids[0], "{'abc':'def'}", ByteString.Empty);
+
+            UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+                this.storage.UpdateObjects(account,
+                    new DataObject(ids[0], "{'ghi':'jkl'}", version1),
+                    new DataObject(ids[1], "{'mno':'pqr'}", wrongVersion)));
+
+            IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(account, new[] { ids[0] });
+            IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(account, new[] { ids[1] });
+
+            AssertObject(object1[0], ids[0], "{'abc':'def'}", version1);
+            AssertObject(object2[0], ids[1], null, ByteString.Empty);
+            Assert.Equal(ids[1], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
 
@@ -287,7 +359,7 @@ namespace Wistap.Tests
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(version1, exception.Version);
         }
-        
+
         [Fact]
         public async Task UpdateObjects_InsertConflict()
         {
@@ -338,7 +410,7 @@ namespace Wistap.Tests
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(version1, exception.Version);
         }
-        
+
         [Fact]
         public async Task GetObjects_UpdateConflict()
         {

@@ -22,9 +22,10 @@ AS $$ #variable_conflict use_variable BEGIN
 
     CREATE LOCAL TEMP TABLE modified_object
     ON COMMIT DROP AS
-    SELECT  (json_object ->> 'k')::uuid as id,
+    SELECT  (json_object ->> 'i')::uuid as id,
             CASE WHEN json_object ->> 'p' IS NULL THEN NULL ELSE (json_object ->> 'p')::jsonb END as payload,
-            decode((json_object ->> 'v')::text, 'hex') as version
+            decode((json_object ->> 'v')::text, 'hex') as version,
+            (json_object ->> 'c')::boolean as check_only
     FROM    jsonb_array_elements(objects) as json_object;
 
     -- This query returns conflicting rows, the result must be empty
@@ -52,7 +53,7 @@ AS $$ #variable_conflict use_variable BEGIN
     SELECT modified_object.id,
            account,
            modified_object.payload,
-           version
+           CASE WHEN modified_object.check_only THEN E'\\x' ELSE version END
     FROM modified_object
     WHERE modified_object.version = E'\\x';
 
@@ -62,7 +63,7 @@ AS $$ #variable_conflict use_variable BEGIN
     SET payload = modified_object.payload,
         version = version
     FROM modified_object
-    WHERE object.id = modified_object.id AND modified_object.version <> E'\\x';
+    WHERE object.id = modified_object.id AND modified_object.version <> E'\\x' AND NOT modified_object.check_only;
 
     DROP TABLE modified_object;
 

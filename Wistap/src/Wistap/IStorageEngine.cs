@@ -16,7 +16,7 @@ namespace Wistap
         /// <param name="payload"></param>
         /// <param name="version"></param>
         /// <returns></returns>
-        Task<ByteString> UpdateObjects(ByteString accounts, IEnumerable<DataObject> objects);
+        Task<ByteString> UpdateObjects(ByteString accounts, IEnumerable<DataObject> updateObjects, IEnumerable<DataObject> checkObjects);
 
         /// <summary>
         /// Get a list of objects given their IDs.

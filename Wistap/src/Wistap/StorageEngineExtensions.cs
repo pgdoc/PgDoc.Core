@@ -9,7 +9,7 @@ namespace Wistap
     {
         public static Task<ByteString> UpdateObjects(this IStorageEngine storageEngine, ByteString account, params DataObject[] objects)
         {
-            return storageEngine.UpdateObjects(account, (IEnumerable<DataObject>)objects);
+            return storageEngine.UpdateObjects(account, (IEnumerable<DataObject>)objects, (IEnumerable<DataObject>)new DataObject[0]);
         }
 
         public static Task<ByteString> UpdateObject(this IStorageEngine storageEngine, ByteString account, ObjectId id, string payload, ByteString version)
