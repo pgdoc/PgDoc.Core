@@ -20,7 +20,7 @@ namespace Wistap.Tests
 
         public StorageEngineTests()
         {
-            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=postgres;Password=admin;CommandTimeout=2");
+            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=postgres;Password=admin;CommandTimeout=1");
             this.storage = new StorageEngine(connection);
             this.storage.Initialize().Wait();
 
@@ -157,7 +157,9 @@ namespace Wistap.Tests
         public async Task UpdateObjects_ConflictObjectDoesNotExist(bool checkOnly)
         {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                UpdateOrCheckObject(checkOnly, "{'abc':'def'}", wrongVersion));
+                checkOnly
+                ? CheckObject(wrongVersion)
+                : UpdateObject("{'abc':'def'}", wrongVersion));
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
@@ -175,7 +177,9 @@ namespace Wistap.Tests
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                UpdateOrCheckObject(checkOnly, "{'ghi':'jkl'}", wrongVersion));
+                checkOnly
+                ? CheckObject(wrongVersion)
+                : UpdateObject("{'ghi':'jkl'}", wrongVersion));
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
@@ -193,7 +197,9 @@ namespace Wistap.Tests
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                UpdateOrCheckObject(checkOnly, "{'ghi':'jkl'}", ByteString.Empty));
+                checkOnly
+                ? CheckObject(ByteString.Empty)
+                : UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
@@ -348,14 +354,11 @@ namespace Wistap.Tests
                 // Update the object with transaction 2
                 version2 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1);
 
-                if (checkOnly)
-                    // Try to check the version of the object with transaction 1
-                    exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                        CheckObject(version1));
-                else
-                    // Try to update the object with transaction 1
-                    exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                        UpdateObject("{'mno':'pqr'}", version1));
+                // Try to update or check the version of the object with transaction 1
+                exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+                    checkOnly
+                    ? CheckObject(version1)
+                    : UpdateObject("{'mno':'pqr'}", version1));
             }
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
@@ -381,14 +384,11 @@ namespace Wistap.Tests
                 // Insert the object with transaction 2
                 version1 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", ByteString.Empty);
 
-                if (checkOnly)
-                    // Try to check the version of the object with transaction 1
-                    exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                        CheckObject(ByteString.Empty));
-                else
-                    // Try to update the object with transaction 1
-                    exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                        UpdateObject("{'mno':'pqr'}", ByteString.Empty));
+                // Try to update or check the version of the object with transaction 1
+                exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+                    checkOnly
+                    ? CheckObject(ByteString.Empty)
+                    : UpdateObject("{'mno':'pqr'}", ByteString.Empty));
             }
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
@@ -406,20 +406,17 @@ namespace Wistap.Tests
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
             UpdateConflictException exception;
 
-            StorageEngine storageEngine2 = await CreateStorageEngine();
-            using (DbTransaction transaction = storageEngine2.StartTransaction())
+            StorageEngine connection2 = await CreateStorageEngine();
+            using (DbTransaction transaction = connection2.StartTransaction())
             {
                 // Lock the object with transaction 2
-                await storageEngine2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", version1) });
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", version1) });
 
-                if (checkOnly)
-                    // Try to update the object with transaction 1
-                    exception = await Assert.ThrowsAsync<UpdateConflictException>(async () =>
-                        await UpdateObject("{'ghi':'jkl'}", version1));
-                else
-                    // Try to check the version of the object with transaction 1
-                    exception = await Assert.ThrowsAsync<UpdateConflictException>(async () =>
-                        await CheckObject(version1));
+                // Try to update or check the version of the object with transaction 1
+                exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
+                    checkOnly
+                    ? CheckObject(version1)
+                    : UpdateObject("{'ghi':'jkl'}", version1));
             }
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
@@ -436,20 +433,17 @@ namespace Wistap.Tests
         {
             TaskCanceledException exception;
 
-            StorageEngine storageEngine2 = await CreateStorageEngine();
-            using (DbTransaction transaction = storageEngine2.StartTransaction())
+            StorageEngine connection2 = await CreateStorageEngine();
+            using (DbTransaction transaction = connection2.StartTransaction())
             {
                 // Lock the object with transaction 2
-                await storageEngine2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", ByteString.Empty) });
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", ByteString.Empty) });
 
-                if (checkOnly)
-                    // Try to update the object with transaction 1
-                    exception = await Assert.ThrowsAsync<TaskCanceledException>(async () =>
-                        await UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
-                else
-                    // Try to check the version of the object with transaction 1
-                    exception = await Assert.ThrowsAsync<TaskCanceledException>(async () =>
-                        await CheckObject(ByteString.Empty));
+                // Try to update or check the version of the object with transaction 1
+                exception = await Assert.ThrowsAsync<TaskCanceledException>(() =>
+                    checkOnly
+                    ? CheckObject(ByteString.Empty)
+                    : UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
             }
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
@@ -484,14 +478,6 @@ namespace Wistap.Tests
         private async Task<ByteString> CheckObject(ByteString version)
         {
             return await this.storage.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", version) });
-        }
-
-        private async Task<ByteString> UpdateOrCheckObject(bool checkOnly, string payload, ByteString version)
-        {
-            if (checkOnly)
-                return await CheckObject(version);
-            else
-                return await UpdateObject(payload, version);
         }
 
         private static void AssertObject(DataObject dataObject, ObjectId id, string payload, ByteString version)
