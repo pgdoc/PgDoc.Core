@@ -94,30 +94,23 @@ namespace Wistap
                 command.Parameters.Add(new NpgsqlParameter("@account", account.ToByteArray()));
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-                try
+                IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
+                command,
+                reader => new DataObject(
+                    new ObjectId((Guid)reader["id"]),
+                    reader["payload"] is DBNull ? null : (string)reader["payload"],
+                    new ByteString((byte[])reader["version"])));
+
+                Dictionary<ObjectId, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
+
+                foreach (Guid id in idList)
                 {
-                    IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
-                    command,
-                    reader => new DataObject(
-                        new ObjectId((Guid)reader["id"]),
-                        reader["payload"] is DBNull ? null : (string)reader["payload"],
-                        new ByteString((byte[])reader["version"])));
-
-                    Dictionary<ObjectId, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
-
-                    foreach (Guid id in idList)
-                    {
-                        ObjectId objectId = new ObjectId(id);
-                        if (!result.ContainsKey(objectId))
-                            result.Add(objectId, new DataObject(objectId, null, ByteString.Empty));
-                    }
-
-                    return result.Values.ToList().AsReadOnly();
+                    ObjectId objectId = new ObjectId(id);
+                    if (!result.ContainsKey(objectId))
+                        result.Add(objectId, new DataObject(objectId, null, ByteString.Empty));
                 }
-                catch (NpgsqlException exception) when (exception.Code == UpdateConflictCode || exception.Code == UnableToAcquireLockCode)
-                {
-                    throw new UpdateConflictException(new ObjectId(idList[0]), null);
-                }
+
+                return result.Values.ToList().AsReadOnly();
             }
         }
 
