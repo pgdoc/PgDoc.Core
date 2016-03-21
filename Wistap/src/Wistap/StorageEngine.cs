@@ -46,13 +46,13 @@ namespace Wistap
                 c = item.Item2 ? 1 : 0
             })).ToArray());
 
-            byte[] newVersion;
+            byte[] newVersion = new byte[8];
 
             using (MD5 md5 = MD5.Create())
             {
                 byte[] md5Hash = md5.ComputeHash(Encoding.UTF8.GetBytes(jsonObjects.ToString(Newtonsoft.Json.Formatting.None)));
-                newVersion = new byte[8];
-                Buffer.BlockCopy(md5Hash, 0, newVersion, 0, 8);
+                for (int i = 0; i < 8; i++)
+                    newVersion[i] = md5Hash[i];
             }
 
             using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_objects", connection, this.transaction))

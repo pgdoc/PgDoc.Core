@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Threading.Tasks;
 
 namespace Wistap
@@ -10,22 +9,20 @@ namespace Wistap
         Task Initialize();
 
         /// <summary>
-        /// Update the payload of an existing object.
+        /// Updates atomically the payload of several objects.
         /// </summary>
-        /// <param name="id"></param>
-        /// <param name="payload"></param>
-        /// <param name="version"></param>
-        /// <returns></returns>
-        Task<ByteString> UpdateObjects(ByteString accounts, IEnumerable<DataObject> updateObjects, IEnumerable<DataObject> checkObjects);
+        /// <param name="account">The account to which the objects belong.</param>
+        /// <param name="updateObjects">The objects being updated.</param>
+        /// <param name="checkObjects">The objects of which the versions are checked, but which are not updated.</param>
+        /// <returns>The task object representing the asynchronous operation.</returns>
+        Task<ByteString> UpdateObjects(ByteString account, IEnumerable<DataObject> updateObjects, IEnumerable<DataObject> checkObjects);
 
         /// <summary>
-        /// Get a list of objects given their IDs.
+        /// Gets a list of objects given their IDs.
         /// </summary>
-        /// <param name="account"></param>
-        /// <param name="ids"></param>
-        /// <returns></returns>
+        /// <param name="account">The account to which the objects belong.</param>
+        /// <param name="ids">The IDs of the objects to retrieve.</param>
+        /// <returns>The task object representing the asynchronous operation.</returns>
         Task<IReadOnlyList<DataObject>> GetObjects(ByteString account, IEnumerable<ObjectId> ids);
-
-        DbTransaction StartTransaction();
     }
 }

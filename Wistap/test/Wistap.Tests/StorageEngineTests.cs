@@ -16,7 +16,7 @@ namespace Wistap.Tests
         private static readonly ObjectId[] ids =
             Enumerable.Range(0, 32).Select(index => new ObjectId(new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray()))).ToArray();
 
-        private readonly IStorageEngine storage;
+        private readonly StorageEngine storage;
 
         public StorageEngineTests()
         {
