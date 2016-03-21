@@ -18,6 +18,8 @@ CREATE OR REPLACE FUNCTION wistap.update_objects(account bytea, objects jsonb, v
 RETURNS TABLE (id uuid)
 AS $$ #variable_conflict use_variable BEGIN
 
+    -- Parse the input
+
     CREATE LOCAL TEMP TABLE modified_object
     ON COMMIT DROP AS
     SELECT  (json_object ->> 'k')::uuid as id,
@@ -26,6 +28,7 @@ AS $$ #variable_conflict use_variable BEGIN
     FROM    jsonb_array_elements(objects) as json_object;
 
     -- This query returns conflicting rows, the result must be empty
+    -- "FOR UPDATE" ensures existing objects don't get modified before the UPDATE statement
 
     RETURN QUERY
     SELECT modified_object.id
@@ -43,14 +46,6 @@ AS $$ #variable_conflict use_variable BEGIN
       RETURN;
     END IF;
 
-    -- Update existing objects
-
-    UPDATE wistap.object
-    SET payload = modified_object.payload,
-        version = version
-    FROM modified_object
-    WHERE object.id = modified_object.id AND modified_object.version <> E'\\x';
-
     -- Insert new objects
 
     INSERT INTO wistap.object (id, account, payload, version)
@@ -60,6 +55,14 @@ AS $$ #variable_conflict use_variable BEGIN
            version
     FROM modified_object
     WHERE modified_object.version = E'\\x';
+
+    -- Update existing objects
+
+    UPDATE wistap.object
+    SET payload = modified_object.payload,
+        version = version
+    FROM modified_object
+    WHERE object.id = modified_object.id AND modified_object.version <> E'\\x';
 
     DROP TABLE modified_object;
 
