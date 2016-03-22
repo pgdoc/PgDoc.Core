@@ -371,13 +371,12 @@ namespace Wistap.Tests
         public async Task UpdateObjects_UpdateLockUnavailable(bool checkOnly)
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
-            ByteString version2;
 
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
             {
                 // Lock the object with transaction 2
-                version2 = await connection2.UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1);
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", version1) });
 
                 // Try to update or check the version of the object with transaction 1
                 await Assert.ThrowsAsync<TaskCanceledException>(() =>
@@ -390,7 +389,7 @@ namespace Wistap.Tests
 
             IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
 
-            AssertObject(objects[0], ids[0], "{'ghi':'jkl'}", version2);
+            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
         }
 
         [Theory]
@@ -402,7 +401,7 @@ namespace Wistap.Tests
             using (DbTransaction transaction = connection2.StartTransaction())
             {
                 // Lock the object with transaction 2
-                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ghi':'jkl'}", ByteString.Empty) });
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", ByteString.Empty) });
 
                 // Try to update or check the version of the object with transaction 1
                 await Assert.ThrowsAsync<TaskCanceledException>(() =>

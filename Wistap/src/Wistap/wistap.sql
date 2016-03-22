@@ -34,21 +34,22 @@ BEGIN
     -- Insert the new objects
 
     INSERT INTO wistap.object (id, account, payload, version)
-    SELECT modified_object.id,
-           account,
-           NULL,
-           E'\\x'
+    SELECT modified_object.id, account, NULL, E'\\x'
     FROM modified_object
     ON CONFLICT DO NOTHING;
 
     -- This query returns conflicting rows, the result must be empty
     -- "FOR UPDATE" ensures existing objects don't get modified before the UPDATE statement
 
-    SELECT modified_object.id INTO conflict_id
-    FROM modified_object, wistap.object
-    WHERE object.id = modified_object.id AND
-          (object.version <> modified_object.version OR object.account <> account)
-    FOR UPDATE OF object;
+    WITH object AS (
+      SELECT object.id, object.version AS old_version, modified_object.version AS new_version, object.account AS account
+      FROM wistap.object, modified_object
+      WHERE object.id = modified_object.id
+      FOR UPDATE OF object
+    )
+    SELECT id INTO conflict_id
+    FROM object
+    WHERE old_version <> new_version OR object.account <> account;
 
     IF conflict_id IS NOT NULL THEN
       RAISE EXCEPTION 'check_violation' USING HINT = conflict_id::text;
