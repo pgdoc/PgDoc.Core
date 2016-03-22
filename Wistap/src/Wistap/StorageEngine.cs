@@ -16,7 +16,6 @@ namespace Wistap
     {
         private const string UpdateConflictCode = "40001";
         private const string InsertConflictCode = "23505";
-        private const string UnableToAcquireLockCode = "55P03";
 
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
@@ -64,19 +63,20 @@ namespace Wistap
 
                 try
                 {
-                    IReadOnlyList<DataObject> conflicts = await ExecuteQuery(
-                        command,
-                        reader => objectList.First(item => item.Item1.Id.Value.Equals((Guid)reader["id"])).Item1);
-
-                    if (conflicts.Count > 0)
-                        throw new UpdateConflictException(conflicts[0].Id, conflicts[0].Version);
+                    await ExecuteQuery(command, reader => 0);
 
                     return new ByteString(newVersion);
                 }
                 catch (NpgsqlException exception)
-                    when (exception.Code == UpdateConflictCode || exception.Code == UnableToAcquireLockCode || exception.Code == InsertConflictCode)
+                when (exception.Code == UpdateConflictCode || exception.Code == InsertConflictCode)
                 {
                     throw new UpdateConflictException(objectList[0].Item1.Id, objectList[0].Item1.Version);
+                }
+                catch (NpgsqlException exception)
+                when (exception.MessageText == "check_violation")
+                {
+                    DataObject conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Hint))).Item1;
+                    throw new UpdateConflictException(conflict.Id, conflict.Version);
                 }
             }
         }

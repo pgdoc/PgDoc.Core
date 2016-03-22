@@ -15,8 +15,11 @@ CREATE TABLE wistap.object
 --- Update the payload of an existing object
 
 CREATE OR REPLACE FUNCTION wistap.update_objects(account bytea, objects jsonb, version bytea)
-RETURNS TABLE (id uuid)
-AS $$ #variable_conflict use_variable BEGIN
+RETURNS VOID
+AS $$ #variable_conflict use_variable
+DECLARE
+    conflict_id uuid;
+BEGIN
 
     -- Parse the input
 
@@ -28,34 +31,28 @@ AS $$ #variable_conflict use_variable BEGIN
             (json_object ->> 'c')::boolean as check_only
     FROM    jsonb_array_elements(objects) as json_object;
 
-    -- This query returns conflicting rows, the result must be empty
-    -- "FOR UPDATE" ensures existing objects don't get modified before the UPDATE statement
-
-    RETURN QUERY
-    SELECT modified_object.id
-    FROM modified_object
-    LEFT OUTER JOIN (
-      SELECT object.id, object.version
-      FROM modified_object, wistap.object
-      WHERE object.id = modified_object.id AND object.account = account
-      FOR UPDATE OF object NOWAIT
-    ) AS existing_object
-    ON existing_object.id = modified_object.id
-    WHERE modified_object.version <> COALESCE(existing_object.version, E'\\x');
-
-    IF FOUND THEN
-      RETURN;
-    END IF;
-
-    -- Insert new objects
+    -- Insert the new objects
 
     INSERT INTO wistap.object (id, account, payload, version)
     SELECT modified_object.id,
            account,
-           modified_object.payload,
-           CASE WHEN modified_object.check_only THEN E'\\x' ELSE version END
+           NULL,
+           E'\\x'
     FROM modified_object
-    WHERE modified_object.version = E'\\x';
+    ON CONFLICT DO NOTHING;
+
+    -- This query returns conflicting rows, the result must be empty
+    -- "FOR UPDATE" ensures existing objects don't get modified before the UPDATE statement
+
+    SELECT modified_object.id INTO conflict_id
+    FROM modified_object, wistap.object
+    WHERE object.id = modified_object.id AND
+          (object.version <> modified_object.version OR object.account <> account)
+    FOR UPDATE OF object;
+
+    IF conflict_id IS NOT NULL THEN
+      RAISE EXCEPTION 'check_violation' USING HINT = conflict_id::text;
+    END IF;
 
     -- Update existing objects
 
@@ -63,7 +60,7 @@ AS $$ #variable_conflict use_variable BEGIN
     SET payload = modified_object.payload,
         version = version
     FROM modified_object
-    WHERE object.id = modified_object.id AND modified_object.version <> E'\\x' AND NOT modified_object.check_only;
+    WHERE object.id = modified_object.id AND NOT modified_object.check_only;
 
     DROP TABLE modified_object;
 
