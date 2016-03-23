@@ -14,37 +14,46 @@ CREATE TABLE wistap.object
 ---------------------------------------------------
 --- Update the payload of an existing object
 
+CREATE TYPE wistap.object_update AS
+(
+    id uuid,
+    payload jsonb,
+    version bytea,
+    check_only boolean
+);
+
 CREATE OR REPLACE FUNCTION wistap.update_objects(account bytea, objects jsonb, version bytea)
 RETURNS VOID
 AS $$ #variable_conflict use_variable
 DECLARE
     conflict_id uuid;
+    object_updates wistap.object_update[];
 BEGIN
 
     -- Parse the input
 
-    CREATE LOCAL TEMP TABLE modified_object
-    ON COMMIT DROP AS
-    SELECT  (json_object ->> 'i')::uuid as id,
-            CASE WHEN json_object ->> 'p' IS NULL THEN NULL ELSE (json_object ->> 'p')::jsonb END as payload,
-            decode((json_object ->> 'v')::text, 'hex') as version,
-            (json_object ->> 'c')::boolean as check_only
-    FROM    jsonb_array_elements(objects) as json_object;
+    object_updates = ARRAY(
+      SELECT (
+        (json_object ->> 'i')::uuid,
+        CASE WHEN json_object ->> 'p' IS NULL THEN NULL ELSE (json_object ->> 'p')::jsonb END,
+        decode((json_object ->> 'v')::text, 'hex'),
+        (json_object ->> 'c')::boolean)
+      FROM jsonb_array_elements(objects) as json_object);
 
     -- Insert the new objects
 
     INSERT INTO wistap.object (id, account, payload, version)
-    SELECT modified_object.id, account, NULL, E'\\x'
-    FROM modified_object
+    SELECT object_update.id, account, NULL, E'\\x'
+    FROM UNNEST(object_updates) AS object_update
     ON CONFLICT DO NOTHING;
 
     -- This query returns conflicting rows, the result must be empty
     -- "FOR UPDATE" ensures existing objects don't get modified before the UPDATE statement
 
     WITH object AS (
-      SELECT object.id, object.version AS old_version, modified_object.version AS new_version, object.account AS account
-      FROM wistap.object, modified_object
-      WHERE object.id = modified_object.id
+      SELECT object.id, object.version AS old_version, object_update.version AS new_version, object.account AS account
+      FROM wistap.object, UNNEST(object_updates) AS object_update
+      WHERE object.id = object_update.id
       FOR UPDATE OF object
     )
     SELECT id INTO conflict_id
@@ -58,12 +67,10 @@ BEGIN
     -- Update existing objects
 
     UPDATE wistap.object
-    SET payload = modified_object.payload,
+    SET payload = object_update.payload,
         version = version
-    FROM modified_object
-    WHERE object.id = modified_object.id AND NOT modified_object.check_only;
-
-    DROP TABLE modified_object;
+    FROM UNNEST(object_updates) AS object_update
+    WHERE object.id = object_update.id AND NOT object_update.check_only;
 
 END $$ LANGUAGE plpgsql;
 
