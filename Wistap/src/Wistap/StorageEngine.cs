@@ -73,9 +73,9 @@ namespace Wistap
                     throw new UpdateConflictException(objectList[0].Item1.Id, objectList[0].Item1.Version);
                 }
                 catch (NpgsqlException exception)
-                when (exception.MessageText == "check_violation")
+                when (exception.MessageText == "check_violation" && exception.Hint == "update_objects_conflict")
                 {
-                    DataObject conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Hint))).Item1;
+                    DataObject conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
                     throw new UpdateConflictException(conflict.Id, conflict.Version);
                 }
             }

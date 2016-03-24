@@ -38,14 +38,14 @@ BEGIN
         CASE WHEN json_object ->> 'p' IS NULL THEN NULL ELSE (json_object ->> 'p')::jsonb END,
         decode((json_object ->> 'v')::text, 'hex'),
         (json_object ->> 'c')::boolean)
-      FROM jsonb_array_elements(objects) as json_object);
+      FROM jsonb_array_elements(objects) AS json_object);
 
     -- Insert the new objects
 
     INSERT INTO wistap.object (id, account, payload, version)
     SELECT object_update.id, account, NULL, E'\\x'
     FROM UNNEST(object_updates) AS object_update
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (id) DO NOTHING;
 
     -- This query returns conflicting rows, the result must be empty
     -- "FOR UPDATE" ensures existing objects don't get modified before the UPDATE statement
@@ -61,7 +61,7 @@ BEGIN
     WHERE old_version <> new_version OR object.account <> account;
 
     IF conflict_id IS NOT NULL THEN
-      RAISE EXCEPTION 'check_violation' USING HINT = conflict_id::text;
+      RAISE EXCEPTION 'check_violation' USING HINT = 'update_objects_conflict', DETAIL = conflict_id::text;
     END IF;
 
     -- Update existing objects
