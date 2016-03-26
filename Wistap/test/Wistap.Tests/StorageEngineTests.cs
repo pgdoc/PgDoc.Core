@@ -38,10 +38,9 @@ namespace Wistap.Tests
         {
             ByteString version = await UpdateObject(to, ByteString.Empty);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], to, version);
+            AssertObject(dataObject, ids[0], to, version);
             Assert.Equal(8, version.Value.Count);
         }
 
@@ -55,10 +54,9 @@ namespace Wistap.Tests
             ByteString version1 = await UpdateObject(from, ByteString.Empty);
             ByteString version2 = await UpdateObject(to, version1);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], to, version2);
+            AssertObject(dataObject, ids[0], to, version2);
             Assert.Equal(8, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
@@ -68,10 +66,9 @@ namespace Wistap.Tests
         {
             ByteString version = await CheckObject(ByteString.Empty);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], null, ByteString.Empty);
+            AssertObject(dataObject, ids[0], null, ByteString.Empty);
             Assert.Equal(8, version.Value.Count);
         }
 
@@ -83,10 +80,9 @@ namespace Wistap.Tests
             ByteString version1 = await UpdateObject(from, ByteString.Empty);
             ByteString version2 = await CheckObject(version1);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], from, version1);
+            AssertObject(dataObject, ids[0], from, version1);
             Assert.Equal(8, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
@@ -99,10 +95,9 @@ namespace Wistap.Tests
             await CheckObject(ByteString.Empty);
             ByteString version = await UpdateObject(to, ByteString.Empty);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], to, version);
+            AssertObject(dataObject, ids[0], to, version);
             Assert.Equal(8, version.Value.Count);
         }
 
@@ -112,10 +107,9 @@ namespace Wistap.Tests
             await CheckObject(ByteString.Empty);
             await CheckObject(ByteString.Empty);
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], null, ByteString.Empty);
+            AssertObject(dataObject, ids[0], null, ByteString.Empty);
         }
 
         [Theory]
@@ -128,10 +122,9 @@ namespace Wistap.Tests
                 ? CheckObject(wrongVersion)
                 : UpdateObject("{'abc':'def'}", wrongVersion));
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], null, ByteString.Empty);
+            AssertObject(dataObject, ids[0], null, ByteString.Empty);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
@@ -148,10 +141,9 @@ namespace Wistap.Tests
                 ? CheckObject(wrongVersion)
                 : UpdateObject("{'ghi':'jkl'}", wrongVersion));
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
@@ -168,10 +160,9 @@ namespace Wistap.Tests
                 ? CheckObject(ByteString.Empty)
                 : UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(ByteString.Empty, exception.Version);
         }
@@ -189,10 +180,9 @@ namespace Wistap.Tests
                 ? this.storage.UpdateObjects(wrongAccount, new DataObject[0], new[] { new DataObject(ids[0], "{'ghi':'jkl'}", version1) })
                 : this.storage.UpdateObject(wrongAccount, ids[0], "{'ghi':'jkl'}", version1));
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            Assert.Equal(1, objects.Count);
-            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(version1, exception.Version);
         }
@@ -215,15 +205,15 @@ namespace Wistap.Tests
                     new DataObject(ids[3], "{'v':'4'}", ByteString.Empty)
                 });
 
-            IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(account, new[] { ids[0] });
-            IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(account, new[] { ids[1] });
-            IReadOnlyList<DataObject> object3 = await this.storage.GetObjects(account, new[] { ids[2] });
-            IReadOnlyList<DataObject> object4 = await this.storage.GetObjects(account, new[] { ids[3] });
+            DataObject object1 = await this.storage.GetObject(account, ids[0]);
+            DataObject object2 = await this.storage.GetObject(account, ids[1]);
+            DataObject object3 = await this.storage.GetObject(account, ids[2]);
+            DataObject object4 = await this.storage.GetObject(account, ids[3]);
 
-            AssertObject(object1[0], ids[0], "{'v':'1'}", version3);
-            AssertObject(object2[0], ids[1], "{'ghi':'jkl'}", version2);
-            AssertObject(object3[0], ids[2], "{'v':'2'}", version3);
-            AssertObject(object4[0], ids[3], null, ByteString.Empty);
+            AssertObject(object1, ids[0], "{'v':'1'}", version3);
+            AssertObject(object2, ids[1], "{'ghi':'jkl'}", version2);
+            AssertObject(object3, ids[2], "{'v':'2'}", version3);
+            AssertObject(object4, ids[3], null, ByteString.Empty);
         }
 
         [Theory]
@@ -245,11 +235,11 @@ namespace Wistap.Tests
                         new DataObject(ids[1], "{'mno':'pqr'}", wrongVersion));
             });
 
-            IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(account, new[] { ids[0] });
-            IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(account, new[] { ids[1] });
+            DataObject object1 = await this.storage.GetObject(account, ids[0]);
+            DataObject object2 = await this.storage.GetObject(account, ids[1]);
 
-            AssertObject(object1[0], ids[0], "{'abc':'def'}", version1);
-            AssertObject(object2[0], ids[1], null, ByteString.Empty);
+            AssertObject(object1, ids[0], "{'abc':'def'}", version1);
+            AssertObject(object2, ids[1], null, ByteString.Empty);
             Assert.Equal(ids[1], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
@@ -257,6 +247,17 @@ namespace Wistap.Tests
         #endregion
 
         #region GetObjects
+
+        [Fact]
+        public async Task GetObjects_SingleObject()
+        {
+            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+
+            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+
+            Assert.Equal(1, objects.Count);
+            AssertObject(objects.First(dataObject => dataObject.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
+        }
 
         [Fact]
         public async Task GetObjects_MultipleObjects()
@@ -295,13 +296,11 @@ namespace Wistap.Tests
                     UpdateObject("{'mno':'pqr'}", wrongVersion));
             }
 
-            IReadOnlyList<DataObject> object1 = await this.storage.GetObjects(account, new[] { ids[0] });
-            IReadOnlyList<DataObject> object2 = await this.storage.GetObjects(account, new[] { ids[1] });
+            DataObject object1 = await this.storage.GetObject(account, ids[0]);
+            DataObject object2 = await this.storage.GetObject(account, ids[1]);
 
-            Assert.Equal(1, object1.Count);
-            AssertObject(object1[0], ids[0], "{'abc':'def'}", version1);
-            Assert.Equal(1, object2.Count);
-            AssertObject(object2[0], ids[1], null, ByteString.Empty);
+            AssertObject(object1, ids[0], "{'abc':'def'}", version1);
+            AssertObject(object2, ids[1], null, ByteString.Empty);
         }
 
         [Theory]
@@ -316,7 +315,7 @@ namespace Wistap.Tests
             using (DbTransaction transaction = this.storage.StartTransaction())
             {
                 // Start transaction 1
-                await this.storage.GetObjects(account, new[] { ids[1] });
+                await this.storage.GetObject(account, ids[1]);
 
                 // Update the object with transaction 2
                 version2 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1);
@@ -328,9 +327,9 @@ namespace Wistap.Tests
                     : UpdateObject("{'mno':'pqr'}", version1));
             }
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(objects[0], ids[0], "{'ghi':'jkl'}", version2);
+            AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", version2);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(version1, exception.Version);
         }
@@ -346,7 +345,7 @@ namespace Wistap.Tests
             using (DbTransaction transaction = this.storage.StartTransaction())
             {
                 // Start transaction 1
-                await this.storage.GetObjects(account, new[] { ids[1] });
+                await this.storage.GetObject(account, ids[1]);
 
                 // Insert the object with transaction 2
                 version1 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", ByteString.Empty);
@@ -358,9 +357,9 @@ namespace Wistap.Tests
                     : UpdateObject("{'mno':'pqr'}", ByteString.Empty));
             }
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(objects[0], ids[0], "{'ghi':'jkl'}", version1);
+            AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(ByteString.Empty, exception.Version);
         }
@@ -387,9 +386,9 @@ namespace Wistap.Tests
                 transaction.Commit();
             }
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(objects[0], ids[0], "{'abc':'def'}", version1);
+            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
         }
 
         [Theory]
@@ -412,9 +411,9 @@ namespace Wistap.Tests
                 transaction.Commit();
             }
 
-            IReadOnlyList<DataObject> objects = await this.storage.GetObjects(account, new[] { ids[0] });
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(objects[0], ids[0], null, ByteString.Empty);
+            AssertObject(dataObject, ids[0], null, ByteString.Empty);
         }
 
         #endregion

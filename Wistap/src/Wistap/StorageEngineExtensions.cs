@@ -16,5 +16,10 @@ namespace Wistap
         {
             return storageEngine.UpdateObjects(account, new DataObject(id, payload, version));
         }
+
+        public static async Task<DataObject> GetObject(this IStorageEngine storageEngine, ByteString account, ObjectId id)
+        {
+            return (await storageEngine.GetObjects(account, new[] { id }))[0];
+        }
     }
 }

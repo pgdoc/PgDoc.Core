@@ -14,7 +14,7 @@ namespace Wistap
 {
     public class StorageEngine : IStorageEngine
     {
-        private const string UpdateConflictSqlState = "40001";
+        private const string LockConflictSqlState = "40001";
 
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
@@ -67,7 +67,7 @@ namespace Wistap
                     return new ByteString(newVersion);
                 }
                 catch (NpgsqlException exception)
-                when (exception.Code == UpdateConflictSqlState)
+                when (exception.Code == LockConflictSqlState)
                 {
                     throw new UpdateConflictException(objectList[0].Item1.Id, objectList[0].Item1.Version);
                 }
