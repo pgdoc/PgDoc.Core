@@ -54,7 +54,7 @@ BEGIN
       SELECT object.id, object.version AS old_version, object_update.version AS new_version, object.account AS account
       FROM wistap.object, UNNEST(object_updates) AS object_update
       WHERE object.id = object_update.id
-      FOR SHARE OF object
+      FOR UPDATE OF object
     )
     SELECT id INTO conflict_id
     FROM object

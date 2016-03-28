@@ -337,9 +337,10 @@ namespace Wistap.Tests
         }
 
         [Theory]
+        [InlineData(true, false)]
         [InlineData(false, false)]
-        [InlineData(false, true)]
         [InlineData(true, true)]
+        [InlineData(false, true)]
         public async Task UpdateObjects_WaitForLock(bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -362,28 +363,6 @@ namespace Wistap.Tests
             DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
             AssertObject(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
-        }
-
-        [Fact]
-        public async Task UpdateObjects_ConcurrentReadLock()
-        {
-            ByteString initialVersion = await UpdateObject("{'abc':'def'}", ByteString.Empty);
-
-            StorageEngine connection2 = await CreateStorageEngine();
-            using (DbTransaction transaction = connection2.StartTransaction())
-            {
-                // Lock the object with transaction 2
-                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
-
-                // Check the version of the object with transaction 1
-                await CheckObject(initialVersion);
-
-                transaction.Commit();
-            }
-
-            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
-
-            AssertObject(dataObject, ids[0], "{'abc':'def'}", initialVersion);
         }
 
         #endregion
