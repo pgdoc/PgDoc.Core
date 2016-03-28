@@ -304,12 +304,14 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task UpdateObjects_UpdateConflict(bool checkOnly)
+        [InlineData(true, false)]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        [InlineData(false, true)]
+        public async Task UpdateObjects_SerializationError(bool checkOnly, bool isInsert)
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
-            ByteString version2;
+            ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString updatedVersion;
             UpdateConflictException exception;
 
             using (DbTransaction transaction = this.storage.StartTransaction())
@@ -318,104 +320,70 @@ namespace Wistap.Tests
                 await this.storage.GetObject(account, ids[1]);
 
                 // Update the object with transaction 2
-                version2 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", version1);
+                updatedVersion = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", initialVersion);
 
                 // Try to update or check the version of the object with transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                     checkOnly
-                    ? CheckObject(version1)
-                    : UpdateObject("{'mno':'pqr'}", version1));
+                    ? CheckObject(initialVersion)
+                    : UpdateObject("{'mno':'pqr'}", initialVersion));
             }
 
             DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", version2);
+            AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", updatedVersion);
             Assert.Equal(ids[0], exception.Id);
-            Assert.Equal(version1, exception.Version);
+            Assert.Equal(initialVersion, exception.Version);
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task UpdateObjects_InsertConflict(bool checkOnly)
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task UpdateObjects_WaitForLock(bool checkOnly, bool isInsert)
         {
-            ByteString version1;
-            UpdateConflictException exception;
-
-            using (DbTransaction transaction = this.storage.StartTransaction())
-            {
-                // Start transaction 1
-                await this.storage.GetObject(account, ids[1]);
-
-                // Insert the object with transaction 2
-                version1 = await (await CreateStorageEngine()).UpdateObject(account, ids[0], "{'ghi':'jkl'}", ByteString.Empty);
-
-                // Try to update or check the version of the object with transaction 1
-                exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                    checkOnly
-                    ? CheckObject(ByteString.Empty)
-                    : UpdateObject("{'mno':'pqr'}", ByteString.Empty));
-            }
-
-            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
-
-            AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", version1);
-            Assert.Equal(ids[0], exception.Id);
-            Assert.Equal(ByteString.Empty, exception.Version);
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task UpdateObjects_UpdateWaitForLock(bool checkOnly)
-        {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
             {
                 // Lock the object with transaction 2
-                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", version1) });
-
-                if (checkOnly)
-                    // Check the version of the object with transaction 1
-                    await CheckObject(version1);
-                else
-                    // Try to update the object with transaction 1
-                    await Assert.ThrowsAsync<TaskCanceledException>(() =>
-                        UpdateObject("{'ghi':'jkl'}", version1));
-
-                transaction.Commit();
-            }
-
-            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
-
-            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task UpdateObjects_InsertWaitForLock(bool checkOnly)
-        {
-            StorageEngine connection2 = await CreateStorageEngine();
-            using (DbTransaction transaction = connection2.StartTransaction())
-            {
-                // Lock the object with transaction 2
-                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", ByteString.Empty) });
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
 
                 // Try to update or check the version of the object with transaction 1
                 await Assert.ThrowsAsync<TaskCanceledException>(() =>
                     checkOnly
-                    ? CheckObject(ByteString.Empty)
-                    : UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
+                    ? CheckObject(initialVersion)
+                    : UpdateObject("{'mno':'pqr'}", initialVersion));
 
                 transaction.Commit();
             }
 
             DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(dataObject, ids[0], null, ByteString.Empty);
+            AssertObject(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
+        }
+
+        [Fact]
+        public async Task UpdateObjects_ConcurrentReadLock()
+        {
+            ByteString initialVersion = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+
+            StorageEngine connection2 = await CreateStorageEngine();
+            using (DbTransaction transaction = connection2.StartTransaction())
+            {
+                // Lock the object with transaction 2
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
+
+                // Check the version of the object with transaction 1
+                await CheckObject(initialVersion);
+
+                transaction.Commit();
+            }
+
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
+
+            AssertObject(dataObject, ids[0], "{'abc':'def'}", initialVersion);
         }
 
         #endregion
