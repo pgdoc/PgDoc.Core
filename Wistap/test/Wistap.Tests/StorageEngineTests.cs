@@ -367,7 +367,7 @@ namespace Wistap.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public async Task UpdateObjects_UpdateLockUnavailable(bool checkOnly)
+        public async Task UpdateObjects_UpdateWaitForLock(bool checkOnly)
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
@@ -377,11 +377,13 @@ namespace Wistap.Tests
                 // Lock the object with transaction 2
                 await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", version1) });
 
-                // Try to update or check the version of the object with transaction 1
-                await Assert.ThrowsAsync<TaskCanceledException>(() =>
-                    checkOnly
-                    ? CheckObject(version1)
-                    : UpdateObject("{'ghi':'jkl'}", version1));
+                if (checkOnly)
+                    // Check the version of the object with transaction 1
+                    await CheckObject(version1);
+                else
+                    // Try to update the object with transaction 1
+                    await Assert.ThrowsAsync<TaskCanceledException>(() =>
+                        UpdateObject("{'ghi':'jkl'}", version1));
 
                 transaction.Commit();
             }
@@ -394,7 +396,7 @@ namespace Wistap.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public async Task UpdateObjects_InsertLockUnavailable(bool checkOnly)
+        public async Task UpdateObjects_InsertWaitForLock(bool checkOnly)
         {
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
