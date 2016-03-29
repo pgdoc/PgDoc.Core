@@ -11,6 +11,9 @@ namespace Wistap.Tests
 {
     public class StorageEngineTests : IDisposable
     {
+        private const bool Update = false, Insert = true;
+        private const bool ChangePayload = false, CheckVersion = true;
+
         private static readonly ByteString account = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)i));
         private static readonly ByteString wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
         private static readonly ObjectId[] ids =
@@ -113,8 +116,8 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
+        [InlineData(CheckVersion)]
+        [InlineData(ChangePayload)]
         public async Task UpdateObjects_ConflictObjectDoesNotExist(bool checkOnly)
         {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
@@ -130,8 +133,8 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
+        [InlineData(CheckVersion)]
+        [InlineData(ChangePayload)]
         public async Task UpdateObjects_ConflictWrongVersion(bool checkOnly)
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -149,8 +152,8 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
+        [InlineData(CheckVersion)]
+        [InlineData(ChangePayload)]
         public async Task UpdateObjects_ConflictObjectAlreadyExists(bool checkOnly)
         {
             ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -168,8 +171,8 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
+        [InlineData(CheckVersion)]
+        [InlineData(ChangePayload)]
         public async Task UpdateObjects_ConflictWrongAccount(bool checkOnly)
         {
             ByteString wrongAccount = new ByteString(account.ToByteArray().Reverse());
@@ -217,8 +220,8 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
+        [InlineData(CheckVersion)]
+        [InlineData(ChangePayload)]
         public async Task UpdateObjects_MultipleObjectsConflict(bool checkOnly)
         {
             ByteString version1 = await this.storage.UpdateObject(account, ids[0], "{'abc':'def'}", ByteString.Empty);
@@ -304,10 +307,10 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true, false)]
-        [InlineData(false, false)]
-        [InlineData(true, true)]
-        [InlineData(false, true)]
+        [InlineData(CheckVersion, Update)]
+        [InlineData(ChangePayload, Update)]
+        [InlineData(CheckVersion, Insert)]
+        [InlineData(ChangePayload, Insert)]
         public async Task UpdateObjects_SerializationError(bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -337,10 +340,9 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(true, false)]
-        [InlineData(false, false)]
-        [InlineData(true, true)]
-        [InlineData(false, true)]
+        [InlineData(ChangePayload, Update)]
+        [InlineData(CheckVersion, Insert)]
+        [InlineData(ChangePayload, Insert)]
         public async Task UpdateObjects_WaitForLock(bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -363,6 +365,28 @@ namespace Wistap.Tests
             DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
             AssertObject(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
+        }
+
+        [Fact]
+        public async Task UpdateObjects_ConcurrentReadLock()
+        {
+            ByteString initialVersion = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+
+            StorageEngine connection2 = await CreateStorageEngine();
+            using (DbTransaction transaction = connection2.StartTransaction())
+            {
+                // Lock the object with transaction 2
+                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
+
+                // Check the version of the object with transaction 1
+                await CheckObject(initialVersion);
+
+                transaction.Commit();
+            }
+
+            DataObject dataObject = await this.storage.GetObject(account, ids[0]);
+
+            AssertObject(dataObject, ids[0], "{'abc':'def'}", initialVersion);
         }
 
         #endregion
