@@ -340,24 +340,21 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(ChangePayload, Update)]
-        [InlineData(CheckVersion, Insert)]
-        [InlineData(ChangePayload, Insert)]
-        public async Task UpdateObjects_WaitForLock(bool checkOnly, bool isInsert)
+        [InlineData(Update)]
+        [InlineData(Insert)]
+        public async Task UpdateObjects_AcquireReadLock(bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
 
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
             {
-                // Lock the object with transaction 2
+                // Lock the object for read with transaction 2
                 await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
 
-                // Try to update or check the version of the object with transaction 1
+                // Try to update the object with transaction 1
                 await Assert.ThrowsAsync<TaskCanceledException>(() =>
-                    checkOnly
-                    ? CheckObject(initialVersion)
-                    : UpdateObject("{'mno':'pqr'}", initialVersion));
+                    UpdateObject("{'mno':'pqr'}", initialVersion));
 
                 transaction.Commit();
             }
@@ -375,7 +372,7 @@ namespace Wistap.Tests
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
             {
-                // Lock the object with transaction 2
+                // Lock the object for read with transaction 2
                 await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
 
                 // Check the version of the object with transaction 1
