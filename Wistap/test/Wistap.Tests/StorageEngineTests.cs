@@ -340,28 +340,43 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(Update)]
-        [InlineData(Insert)]
-        public async Task UpdateObjects_AcquireReadLock(bool isInsert)
+        // Wait for write Lock
+        [InlineData(false, CheckVersion, Update)]
+        [InlineData(false, ChangePayload, Update)]
+        [InlineData(false, CheckVersion, Insert)]
+        [InlineData(false, ChangePayload, Insert)]
+        // Wait for read Lock
+        [InlineData(true, ChangePayload, Update)]
+        [InlineData(true, ChangePayload, Insert)]
+        public async Task UpdateObjects_WaitForLock(bool isReadLock, bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString updatedVersion;
 
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
             {
-                // Lock the object for read with transaction 2
-                await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) });
+                // Lock the object with transaction 2
+                updatedVersion =
+                    isReadLock
+                    ? await connection2.UpdateObjects(account, new DataObject[0], new[] { new DataObject(ids[0], "{'ignored':'ignored'}", initialVersion) })
+                    : await connection2.UpdateObject(account, ids[0], "{'ghi':'jkl'}", initialVersion);
 
-                // Try to update the object with transaction 1
+                // Try to update or check the version of the object with transaction 1
                 await Assert.ThrowsAsync<TaskCanceledException>(() =>
-                    UpdateObject("{'mno':'pqr'}", initialVersion));
+                    checkOnly
+                    ? CheckObject(initialVersion)
+                    : UpdateObject("{'mno':'pqr'}", initialVersion));
 
                 transaction.Commit();
             }
 
             DataObject dataObject = await this.storage.GetObject(account, ids[0]);
 
-            AssertObject(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
+            if (isReadLock)
+                AssertObject(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
+            else
+                AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", updatedVersion);
         }
 
         [Fact]
