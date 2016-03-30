@@ -286,10 +286,12 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        [InlineData(CheckVersion, Update)]
+        // Attempting to modify an object that has been modified outside of the transaction
         [InlineData(ChangeValue, Update)]
-        [InlineData(CheckVersion, Insert)]
         [InlineData(ChangeValue, Insert)]
+        // Attempting to read an object that has been modified outside of the transaction
+        [InlineData(CheckVersion, Update)]
+        [InlineData(CheckVersion, Insert)]
         public async Task UpdateObjects_SerializationError(bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
@@ -319,12 +321,13 @@ namespace Wistap.Tests
         }
 
         [Theory]
-        // Wait for write Lock
-        [InlineData(false, CheckVersion, Update)]
+        // Write operation waiting for write lock
         [InlineData(false, ChangeValue, Update)]
-        [InlineData(false, CheckVersion, Insert)]
         [InlineData(false, ChangeValue, Insert)]
-        // Wait for read Lock
+        // Read operation waiting for write lock
+        [InlineData(false, CheckVersion, Update)]
+        [InlineData(false, CheckVersion, Insert)]
+        // Write operation waiting for read lock
         [InlineData(true, ChangeValue, Update)]
         [InlineData(true, ChangeValue, Insert)]
         public async Task UpdateObjects_WaitForLock(bool isReadLock, bool checkOnly, bool isInsert)
