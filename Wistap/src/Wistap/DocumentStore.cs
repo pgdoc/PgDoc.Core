@@ -12,14 +12,14 @@ using System.Text;
 
 namespace Wistap
 {
-    public class StorageEngine : IStorageEngine
+    public class DocumentStore : IDocumentStore
     {
         private const string LockConflictSqlState = "40001";
 
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
 
-        public StorageEngine(NpgsqlConnection connection)
+        public DocumentStore(NpgsqlConnection connection)
         {
             this.connection = connection;
         }

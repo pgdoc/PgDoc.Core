@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Wistap
 {
-    public interface IStorageEngine : IDisposable
+    public interface IDocumentStore : IDisposable
     {
         Task Initialize();
 
