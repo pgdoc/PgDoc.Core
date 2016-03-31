@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Wistap.Tests
 {
-    public class ObjectIdTests
+    public class DocumentIdTests
     {
         [Theory]
         [InlineData((short)0)]

@@ -5,19 +5,19 @@ namespace Wistap
 {
     public static class StorageEngineExtensions
     {
-        public static Task<ByteString> UpdateObjects(this IStorageEngine storageEngine, params Document[] objects)
+        public static Task<ByteString> UpdateDocuments(this IStorageEngine storageEngine, params Document[] objects)
         {
-            return storageEngine.UpdateObjects((IEnumerable<Document>)objects, (IEnumerable<Document>)new Document[0]);
+            return storageEngine.UpdateDocuments((IEnumerable<Document>)objects, (IEnumerable<Document>)new Document[0]);
         }
 
-        public static Task<ByteString> UpdateObject(this IStorageEngine storageEngine, DocumentId id, string value, ByteString version)
+        public static Task<ByteString> UpdateDocument(this IStorageEngine storageEngine, DocumentId id, string value, ByteString version)
         {
-            return storageEngine.UpdateObjects(new Document(id, value, version));
+            return storageEngine.UpdateDocuments(new Document(id, value, version));
         }
 
-        public static async Task<Document> GetObject(this IStorageEngine storageEngine, DocumentId id)
+        public static async Task<Document> GetDocument(this IStorageEngine storageEngine, DocumentId id)
         {
-            return (await storageEngine.GetObjects(new[] { id }))[0];
+            return (await storageEngine.GetDocuments(new[] { id }))[0];
         }
     }
 }

@@ -31,18 +31,18 @@ namespace Wistap.Tests
             command.ExecuteNonQuery();
         }
 
-        #region UpdateObject
+        #region UpdateDocument
 
         [Theory]
         [InlineData("{'abc':'def'}")]
         [InlineData(null)]
-        public async Task UpdateObjects_EmptyToValue(string to)
+        public async Task UpdateDocuments_EmptyToValue(string to)
         {
-            ByteString version = await UpdateObject(to, ByteString.Empty);
+            ByteString version = await UpdateDocument(to, ByteString.Empty);
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], to, version);
+            AssertDocument(dataObject, ids[0], to, version);
             Assert.Equal(8, version.Value.Count);
         }
 
@@ -51,40 +51,40 @@ namespace Wistap.Tests
         [InlineData(null, "{'ghi':'jkl'}")]
         [InlineData("{'abc':'def'}", null)]
         [InlineData(null, null)]
-        public async Task UpdateObjects_ValueToValue(string from, string to)
+        public async Task UpdateDocuments_ValueToValue(string from, string to)
         {
-            ByteString version1 = await UpdateObject(from, ByteString.Empty);
-            ByteString version2 = await UpdateObject(to, version1);
+            ByteString version1 = await UpdateDocument(from, ByteString.Empty);
+            ByteString version2 = await UpdateDocument(to, version1);
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], to, version2);
+            AssertDocument(dataObject, ids[0], to, version2);
             Assert.Equal(8, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
 
         [Fact]
-        public async Task UpdateObjects_EmptyToCheck()
+        public async Task UpdateDocuments_EmptyToCheck()
         {
-            ByteString version = await CheckObject(ByteString.Empty);
+            ByteString version = await CheckDocument(ByteString.Empty);
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], null, ByteString.Empty);
+            AssertDocument(dataObject, ids[0], null, ByteString.Empty);
             Assert.Equal(8, version.Value.Count);
         }
 
         [Theory]
         [InlineData("{'abc':'def'}")]
         [InlineData(null)]
-        public async Task UpdateObjects_ValueToCheck(string from)
+        public async Task UpdateDocuments_ValueToCheck(string from)
         {
-            ByteString version1 = await UpdateObject(from, ByteString.Empty);
-            ByteString version2 = await CheckObject(version1);
+            ByteString version1 = await UpdateDocument(from, ByteString.Empty);
+            ByteString version2 = await CheckDocument(version1);
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], from, version1);
+            AssertDocument(dataObject, ids[0], from, version1);
             Assert.Equal(8, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
@@ -92,41 +92,41 @@ namespace Wistap.Tests
         [Theory]
         [InlineData("{'abc':'def'}")]
         [InlineData(null)]
-        public async Task UpdateObjects_CheckToValue(string to)
+        public async Task UpdateDocuments_CheckToValue(string to)
         {
-            await CheckObject(ByteString.Empty);
-            ByteString version = await UpdateObject(to, ByteString.Empty);
+            await CheckDocument(ByteString.Empty);
+            ByteString version = await UpdateDocument(to, ByteString.Empty);
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], to, version);
+            AssertDocument(dataObject, ids[0], to, version);
             Assert.Equal(8, version.Value.Count);
         }
 
         [Fact]
-        public async Task UpdateObjects_CheckToCheck()
+        public async Task UpdateDocuments_CheckToCheck()
         {
-            await CheckObject(ByteString.Empty);
-            await CheckObject(ByteString.Empty);
+            await CheckDocument(ByteString.Empty);
+            await CheckDocument(ByteString.Empty);
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], null, ByteString.Empty);
+            AssertDocument(dataObject, ids[0], null, ByteString.Empty);
         }
 
         [Theory]
         [InlineData(CheckVersion)]
         [InlineData(ChangeValue)]
-        public async Task UpdateObjects_ConflictObjectDoesNotExist(bool checkOnly)
+        public async Task UpdateDocuments_ConflictDocumentDoesNotExist(bool checkOnly)
         {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 checkOnly
-                ? CheckObject(wrongVersion)
-                : UpdateObject("{'abc':'def'}", wrongVersion));
+                ? CheckDocument(wrongVersion)
+                : UpdateDocument("{'abc':'def'}", wrongVersion));
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], null, ByteString.Empty);
+            AssertDocument(dataObject, ids[0], null, ByteString.Empty);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
@@ -134,18 +134,18 @@ namespace Wistap.Tests
         [Theory]
         [InlineData(CheckVersion)]
         [InlineData(ChangeValue)]
-        public async Task UpdateObjects_ConflictWrongVersion(bool checkOnly)
+        public async Task UpdateDocuments_ConflictWrongVersion(bool checkOnly)
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 checkOnly
-                ? CheckObject(wrongVersion)
-                : UpdateObject("{'ghi':'jkl'}", wrongVersion));
+                ? CheckDocument(wrongVersion)
+                : UpdateDocument("{'ghi':'jkl'}", wrongVersion));
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
+            AssertDocument(dataObject, ids[0], "{'abc':'def'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
@@ -153,29 +153,29 @@ namespace Wistap.Tests
         [Theory]
         [InlineData(CheckVersion)]
         [InlineData(ChangeValue)]
-        public async Task UpdateObjects_ConflictObjectAlreadyExists(bool checkOnly)
+        public async Task UpdateDocuments_ConflictDocumentAlreadyExists(bool checkOnly)
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 checkOnly
-                ? CheckObject(ByteString.Empty)
-                : UpdateObject("{'ghi':'jkl'}", ByteString.Empty));
+                ? CheckDocument(ByteString.Empty)
+                : UpdateDocument("{'ghi':'jkl'}", ByteString.Empty));
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], "{'abc':'def'}", version1);
+            AssertDocument(dataObject, ids[0], "{'abc':'def'}", version1);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(ByteString.Empty, exception.Version);
         }
 
         [Fact]
-        public async Task UpdateObjects_MultipleObjectsSuccess()
+        public async Task UpdateDocuments_MultipleDocumentsSuccess()
         {
-            ByteString version1 = await this.storage.UpdateObject(ids[0], "{'abc':'def'}", ByteString.Empty);
-            ByteString version2 = await this.storage.UpdateObject(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
+            ByteString version1 = await this.storage.UpdateDocument(ids[0], "{'abc':'def'}", ByteString.Empty);
+            ByteString version2 = await this.storage.UpdateDocument(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
-            ByteString version3 = await this.storage.UpdateObjects(
+            ByteString version3 = await this.storage.UpdateDocuments(
                 new Document[]
                 {
                     new Document(ids[0], "{'v':'1'}", version1),
@@ -187,76 +187,76 @@ namespace Wistap.Tests
                     new Document(ids[3], "{'v':'4'}", ByteString.Empty)
                 });
 
-            Document object1 = await this.storage.GetObject(ids[0]);
-            Document object2 = await this.storage.GetObject(ids[1]);
-            Document object3 = await this.storage.GetObject(ids[2]);
-            Document object4 = await this.storage.GetObject(ids[3]);
+            Document object1 = await this.storage.GetDocument(ids[0]);
+            Document object2 = await this.storage.GetDocument(ids[1]);
+            Document object3 = await this.storage.GetDocument(ids[2]);
+            Document object4 = await this.storage.GetDocument(ids[3]);
 
-            AssertObject(object1, ids[0], "{'v':'1'}", version3);
-            AssertObject(object2, ids[1], "{'ghi':'jkl'}", version2);
-            AssertObject(object3, ids[2], "{'v':'2'}", version3);
-            AssertObject(object4, ids[3], null, ByteString.Empty);
+            AssertDocument(object1, ids[0], "{'v':'1'}", version3);
+            AssertDocument(object2, ids[1], "{'ghi':'jkl'}", version2);
+            AssertDocument(object3, ids[2], "{'v':'2'}", version3);
+            AssertDocument(object4, ids[3], null, ByteString.Empty);
         }
 
         [Theory]
         [InlineData(CheckVersion)]
         [InlineData(ChangeValue)]
-        public async Task UpdateObjects_MultipleObjectsConflict(bool checkOnly)
+        public async Task UpdateDocuments_MultipleDocumentsConflict(bool checkOnly)
         {
-            ByteString version1 = await this.storage.UpdateObject(ids[0], "{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await this.storage.UpdateDocument(ids[0], "{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(async delegate ()
             {
                 if (checkOnly)
-                    await this.storage.UpdateObjects(
+                    await this.storage.UpdateDocuments(
                         new Document[] { new Document(ids[0], "{'ghi':'jkl'}", version1) },
                         new Document[] { new Document(ids[1], "{'mno':'pqr'}", wrongVersion) });
                 else
-                    await this.storage.UpdateObjects(
+                    await this.storage.UpdateDocuments(
                         new Document(ids[0], "{'ghi':'jkl'}", version1),
                         new Document(ids[1], "{'mno':'pqr'}", wrongVersion));
             });
 
-            Document object1 = await this.storage.GetObject(ids[0]);
-            Document object2 = await this.storage.GetObject(ids[1]);
+            Document object1 = await this.storage.GetDocument(ids[0]);
+            Document object2 = await this.storage.GetDocument(ids[1]);
 
-            AssertObject(object1, ids[0], "{'abc':'def'}", version1);
-            AssertObject(object2, ids[1], null, ByteString.Empty);
+            AssertDocument(object1, ids[0], "{'abc':'def'}", version1);
+            AssertDocument(object2, ids[1], null, ByteString.Empty);
             Assert.Equal(ids[1], exception.Id);
             Assert.Equal(wrongVersion, exception.Version);
         }
 
         #endregion
 
-        #region GetObjects
+        #region GetDocuments
 
         [Fact]
-        public async Task GetObjects_SingleObject()
+        public async Task GetDocuments_SingleDocument()
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            IReadOnlyList<Document> objects = await this.storage.GetObjects(new[] { ids[0] });
+            IReadOnlyList<Document> objects = await this.storage.GetDocuments(new[] { ids[0] });
 
             Assert.Equal(1, objects.Count);
-            AssertObject(objects.First(dataObject => dataObject.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
+            AssertDocument(objects.First(dataObject => dataObject.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
         }
 
         [Fact]
-        public async Task GetObjects_MultipleObjects()
+        public async Task GetDocuments_MultipleDocuments()
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            IReadOnlyList<Document> objects = await this.storage.GetObjects(new[] { ids[0], ids[1] });
+            IReadOnlyList<Document> objects = await this.storage.GetDocuments(new[] { ids[0], ids[1] });
 
             Assert.Equal(2, objects.Count);
-            AssertObject(objects.First(dataObject => dataObject.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
-            AssertObject(objects.First(dataObject => dataObject.Id.Equals(ids[1])), ids[1], null, ByteString.Empty);
+            AssertDocument(objects.First(dataObject => dataObject.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
+            AssertDocument(objects.First(dataObject => dataObject.Id.Equals(ids[1])), ids[1], null, ByteString.Empty);
         }
 
         [Fact]
-        public async Task GetObjects_NoObject()
+        public async Task GetDocuments_NoDocument()
         {
-            IReadOnlyList<Document> objects = await this.storage.GetObjects(new DocumentId[0]);
+            IReadOnlyList<Document> objects = await this.storage.GetDocuments(new DocumentId[0]);
 
             Assert.Equal(0, objects.Count);
         }
@@ -268,21 +268,21 @@ namespace Wistap.Tests
         [Fact]
         public async Task StartTransaction_Atomicity()
         {
-            ByteString version1 = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
             using (this.storage.StartTransaction())
             {
-                await this.storage.UpdateObject(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
+                await this.storage.UpdateDocument(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
                 UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                    UpdateObject("{'mno':'pqr'}", wrongVersion));
+                    UpdateDocument("{'mno':'pqr'}", wrongVersion));
             }
 
-            Document object1 = await this.storage.GetObject(ids[0]);
-            Document object2 = await this.storage.GetObject(ids[1]);
+            Document object1 = await this.storage.GetDocument(ids[0]);
+            Document object2 = await this.storage.GetDocument(ids[1]);
 
-            AssertObject(object1, ids[0], "{'abc':'def'}", version1);
-            AssertObject(object2, ids[1], null, ByteString.Empty);
+            AssertDocument(object1, ids[0], "{'abc':'def'}", version1);
+            AssertDocument(object2, ids[1], null, ByteString.Empty);
         }
 
         [Theory]
@@ -292,30 +292,30 @@ namespace Wistap.Tests
         // Attempting to read an object that has been modified outside of the transaction
         [InlineData(CheckVersion, Update)]
         [InlineData(CheckVersion, Insert)]
-        public async Task UpdateObjects_SerializationError(bool checkOnly, bool isInsert)
+        public async Task UpdateDocuments_SerializationError(bool checkOnly, bool isInsert)
         {
-            ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateDocument("{'abc':'def'}", ByteString.Empty);
             ByteString updatedVersion;
             UpdateConflictException exception;
 
             using (DbTransaction transaction = this.storage.StartTransaction())
             {
                 // Start transaction 1
-                await this.storage.GetObject(ids[1]);
+                await this.storage.GetDocument(ids[1]);
 
                 // Update the object with transaction 2
-                updatedVersion = await (await CreateStorageEngine()).UpdateObject(ids[0], "{'ghi':'jkl'}", initialVersion);
+                updatedVersion = await (await CreateStorageEngine()).UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
 
                 // Try to update or check the version of the object with transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                     checkOnly
-                    ? CheckObject(initialVersion)
-                    : UpdateObject("{'mno':'pqr'}", initialVersion));
+                    ? CheckDocument(initialVersion)
+                    : UpdateDocument("{'mno':'pqr'}", initialVersion));
             }
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", updatedVersion);
+            AssertDocument(dataObject, ids[0], "{'ghi':'jkl'}", updatedVersion);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(initialVersion, exception.Version);
         }
@@ -330,9 +330,9 @@ namespace Wistap.Tests
         // Write operation waiting for read lock
         [InlineData(true, ChangeValue, Update)]
         [InlineData(true, ChangeValue, Insert)]
-        public async Task UpdateObjects_WaitForLock(bool isReadLock, bool checkOnly, bool isInsert)
+        public async Task UpdateDocuments_WaitForLock(bool isReadLock, bool checkOnly, bool isInsert)
         {
-            ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateDocument("{'abc':'def'}", ByteString.Empty);
             ByteString updatedVersion;
 
             StorageEngine connection2 = await CreateStorageEngine();
@@ -341,46 +341,46 @@ namespace Wistap.Tests
                 // Lock the object with transaction 2
                 updatedVersion =
                     isReadLock
-                    ? await connection2.UpdateObjects(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) })
-                    : await connection2.UpdateObject(ids[0], "{'ghi':'jkl'}", initialVersion);
+                    ? await connection2.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) })
+                    : await connection2.UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
 
                 // Try to update or check the version of the object with transaction 1
                 await Assert.ThrowsAsync<TaskCanceledException>(() =>
                     checkOnly
-                    ? CheckObject(initialVersion)
-                    : UpdateObject("{'mno':'pqr'}", initialVersion));
+                    ? CheckDocument(initialVersion)
+                    : UpdateDocument("{'mno':'pqr'}", initialVersion));
 
                 transaction.Commit();
             }
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
             if (isReadLock)
-                AssertObject(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
+                AssertDocument(dataObject, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
             else
-                AssertObject(dataObject, ids[0], "{'ghi':'jkl'}", updatedVersion);
+                AssertDocument(dataObject, ids[0], "{'ghi':'jkl'}", updatedVersion);
         }
 
         [Fact]
-        public async Task UpdateObjects_ConcurrentReadLock()
+        public async Task UpdateDocuments_ConcurrentReadLock()
         {
-            ByteString initialVersion = await UpdateObject("{'abc':'def'}", ByteString.Empty);
+            ByteString initialVersion = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
             StorageEngine connection2 = await CreateStorageEngine();
             using (DbTransaction transaction = connection2.StartTransaction())
             {
                 // Lock the object for read with transaction 2
-                await connection2.UpdateObjects(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) });
+                await connection2.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) });
 
                 // Check the version of the object with transaction 1
-                await CheckObject(initialVersion);
+                await CheckDocument(initialVersion);
 
                 transaction.Commit();
             }
 
-            Document dataObject = await this.storage.GetObject(ids[0]);
+            Document dataObject = await this.storage.GetDocument(ids[0]);
 
-            AssertObject(dataObject, ids[0], "{'abc':'def'}", initialVersion);
+            AssertDocument(dataObject, ids[0], "{'abc':'def'}", initialVersion);
         }
 
         #endregion
@@ -402,31 +402,31 @@ namespace Wistap.Tests
             return engine;
         }
 
-        private async Task<ByteString> UpdateObject(string value, ByteString version)
+        private async Task<ByteString> UpdateDocument(string value, ByteString version)
         {
-            return await this.storage.UpdateObject(ids[0], value, version);
+            return await this.storage.UpdateDocument(ids[0], value, version);
         }
 
-        private async Task<ByteString> CheckObject(ByteString version)
+        private async Task<ByteString> CheckDocument(ByteString version)
         {
-            return await this.storage.UpdateObjects(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
+            return await this.storage.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
         }
 
-        private static void AssertObject(Document dataObject, DocumentId id, string value, ByteString version)
+        private static void AssertDocument(Document document, DocumentId id, string value, ByteString version)
         {
-            Assert.Equal(id.Value, dataObject.Id.Value);
+            Assert.Equal(id.Value, document.Id.Value);
 
             if (value == null)
             {
-                Assert.Null(dataObject.Content);
+                Assert.Null(document.Content);
             }
             else
             {
-                Assert.NotNull(dataObject.Content);
-                Assert.Equal(JObject.Parse(value).ToString(Newtonsoft.Json.Formatting.None), JObject.Parse(dataObject.Content).ToString(Newtonsoft.Json.Formatting.None));
+                Assert.NotNull(document.Content);
+                Assert.Equal(JObject.Parse(value).ToString(Newtonsoft.Json.Formatting.None), JObject.Parse(document.Content).ToString(Newtonsoft.Json.Formatting.None));
             }
 
-            Assert.Equal(version, dataObject.Version);
+            Assert.Equal(version, document.Version);
         }
 
         #endregion

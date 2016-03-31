@@ -9,20 +9,18 @@ namespace Wistap
         Task Initialize();
 
         /// <summary>
-        /// Updates atomically the value of several objects.
+        /// Updates atomically the content of several objects.
         /// </summary>
-        /// <param name="account">The account to which the objects belong.</param>
-        /// <param name="updateObjects">The objects being updated.</param>
-        /// <param name="checkObjects">The objects of which the versions are checked, but which are not updated.</param>
+        /// <param name="updatedDocuments">The documents being updated.</param>
+        /// <param name="checkedDocuments">The documents of which the versions are checked, but which are not updated.</param>
         /// <returns>The task object representing the asynchronous operation.</returns>
-        Task<ByteString> UpdateObjects(IEnumerable<Document> updateObjects, IEnumerable<Document> checkObjects);
+        Task<ByteString> UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments);
 
         /// <summary>
-        /// Gets a list of objects given their IDs.
+        /// Gets a list of documents given their IDs.
         /// </summary>
-        /// <param name="account">The account to which the objects belong.</param>
-        /// <param name="ids">The IDs of the objects to retrieve.</param>
+        /// <param name="ids">The IDs of the documents to retrieve.</param>
         /// <returns>The task object representing the asynchronous operation.</returns>
-        Task<IReadOnlyList<Document>> GetObjects(IEnumerable<DocumentId> ids);
+        Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<DocumentId> ids);
     }
 }

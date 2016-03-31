@@ -30,13 +30,13 @@ namespace Wistap
                 await connection.OpenAsync();
         }
 
-        public async Task<ByteString> UpdateObjects(IEnumerable<Document> updateObjects, IEnumerable<Document> checkObjects)
+        public async Task<ByteString> UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
         {
-            IList<Tuple<Document, bool>> objectList = updateObjects
+            IList<Tuple<Document, bool>> documents = updatedDocuments
                 .Select(item => Tuple.Create(item, false))
-                .Concat(checkObjects.Select(item => Tuple.Create(item, true))).ToList();
+                .Concat(checkedDocuments.Select(item => Tuple.Create(item, true))).ToList();
 
-            JArray jsonObjects = new JArray(objectList.Select(item => JObject.FromObject(new
+            JArray jsonDocuments = new JArray(documents.Select(item => JObject.FromObject(new
             {
                 i = item.Item1.Id.ToString(),
                 c = item.Item1.Content == null || item.Item2 ? null : JToken.Parse(item.Item1.Content).ToString(),
@@ -48,7 +48,7 @@ namespace Wistap
 
             using (MD5 md5 = MD5.Create())
             {
-                byte[] md5Hash = md5.ComputeHash(Encoding.UTF8.GetBytes(jsonObjects.ToString(Newtonsoft.Json.Formatting.None)));
+                byte[] md5Hash = md5.ComputeHash(Encoding.UTF8.GetBytes(jsonDocuments.ToString(Newtonsoft.Json.Formatting.None)));
                 for (int i = 0; i < 8; i++)
                     newVersion[i] = md5Hash[i];
             }
@@ -56,7 +56,7 @@ namespace Wistap
             using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@documents", NpgsqlDbType.Jsonb, jsonObjects);
+                command.Parameters.AddWithValue("@documents", NpgsqlDbType.Jsonb, jsonDocuments);
                 command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
                 try
@@ -68,18 +68,18 @@ namespace Wistap
                 catch (NpgsqlException exception)
                 when (exception.Code == LockConflictSqlState)
                 {
-                    throw new UpdateConflictException(objectList[0].Item1.Id, objectList[0].Item1.Version);
+                    throw new UpdateConflictException(documents[0].Item1.Id, documents[0].Item1.Version);
                 }
                 catch (NpgsqlException exception)
                 when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
                 {
-                    Document conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
+                    Document conflict = documents.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
                     throw new UpdateConflictException(conflict.Id, conflict.Version);
                 }
             }
         }
 
-        public async Task<IReadOnlyList<Document>> GetObjects(IEnumerable<DocumentId> ids)
+        public async Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<DocumentId> ids)
         {
             List<Guid> idList = ids.Select(id => id.Value).ToList();
 
@@ -98,13 +98,13 @@ namespace Wistap
                     reader["content"] is DBNull ? null : (string)reader["content"],
                     new ByteString((byte[])reader["version"])));
 
-                Dictionary<DocumentId, Document> result = queryResult.ToDictionary(dataObject => dataObject.Id);
+                Dictionary<DocumentId, Document> result = queryResult.ToDictionary(document => document.Id);
 
                 foreach (Guid id in idList)
                 {
-                    DocumentId objectId = new DocumentId(id);
-                    if (!result.ContainsKey(objectId))
-                        result.Add(objectId, new Document(objectId, null, ByteString.Empty));
+                    DocumentId documentId = new DocumentId(id);
+                    if (!result.ContainsKey(documentId))
+                        result.Add(documentId, new Document(documentId, null, ByteString.Empty));
                 }
 
                 return result.Values.ToList().AsReadOnly();
