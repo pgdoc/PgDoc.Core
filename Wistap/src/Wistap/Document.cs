@@ -2,9 +2,9 @@
 
 namespace Wistap
 {
-    public class DataObject
+    public class Document
     {
-        public DataObject(ObjectId id, string value, ByteString version)
+        public Document(DocumentId id, string content, ByteString version)
         {
             if (id == null)
                 throw new ArgumentNullException(nameof(id));
@@ -13,13 +13,13 @@ namespace Wistap
                 throw new ArgumentNullException(nameof(version));
 
             this.Id = id;
-            this.Value = value;
+            this.Content = content;
             this.Version = version;
         }
 
-        public ObjectId Id { get; }
+        public DocumentId Id { get; }
 
-        public string Value { get; }
+        public string Content { get; }
 
         public ByteString Version { get; }
     }

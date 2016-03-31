@@ -11,7 +11,7 @@ namespace Wistap
         /// Initializes a new instance of the <see cref="ConcurrentMutationException"/> class.
         /// </summary>
         /// <param name="failedUpdate">The failed record mutation.</param>
-        public UpdateConflictException(ObjectId id, ByteString version)
+        public UpdateConflictException(DocumentId id, ByteString version)
             : base($"The object '{id}' has been modified.")
         {
             this.Id = id;
@@ -21,7 +21,7 @@ namespace Wistap
         /// <summary>
         /// Gets the failed record mutation.
         /// </summary>
-        public ObjectId Id { get; }
+        public DocumentId Id { get; }
 
         public ByteString Version { get; }
     }

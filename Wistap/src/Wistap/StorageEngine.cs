@@ -30,16 +30,16 @@ namespace Wistap
                 await connection.OpenAsync();
         }
 
-        public async Task<ByteString> UpdateObjects(IEnumerable<DataObject> updateObjects, IEnumerable<DataObject> checkObjects)
+        public async Task<ByteString> UpdateObjects(IEnumerable<Document> updateObjects, IEnumerable<Document> checkObjects)
         {
-            IList<Tuple<DataObject, bool>> objectList = updateObjects
+            IList<Tuple<Document, bool>> objectList = updateObjects
                 .Select(item => Tuple.Create(item, false))
                 .Concat(checkObjects.Select(item => Tuple.Create(item, true))).ToList();
 
             JArray jsonObjects = new JArray(objectList.Select(item => JObject.FromObject(new
             {
                 i = item.Item1.Id.ToString(),
-                c = item.Item1.Value == null || item.Item2 ? null : JToken.Parse(item.Item1.Value).ToString(),
+                c = item.Item1.Content == null || item.Item2 ? null : JToken.Parse(item.Item1.Content).ToString(),
                 v = item.Item1.Version.ToString(),
                 r = item.Item2 ? 1 : 0
             })).ToArray());
@@ -73,38 +73,38 @@ namespace Wistap
                 catch (NpgsqlException exception)
                 when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
                 {
-                    DataObject conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
+                    Document conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
                     throw new UpdateConflictException(conflict.Id, conflict.Version);
                 }
             }
         }
 
-        public async Task<IReadOnlyList<DataObject>> GetObjects(IEnumerable<ObjectId> ids)
+        public async Task<IReadOnlyList<Document>> GetObjects(IEnumerable<DocumentId> ids)
         {
             List<Guid> idList = ids.Select(id => id.Value).ToList();
 
             if (idList.Count == 0)
-                return new DataObject[0];
+                return new Document[0];
 
             using (NpgsqlCommand command = new NpgsqlCommand("wistap.get_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-                IReadOnlyList<DataObject> queryResult = await ExecuteQuery(
+                IReadOnlyList<Document> queryResult = await ExecuteQuery(
                 command,
-                reader => new DataObject(
-                    new ObjectId((Guid)reader["id"]),
+                reader => new Document(
+                    new DocumentId((Guid)reader["id"]),
                     reader["content"] is DBNull ? null : (string)reader["content"],
                     new ByteString((byte[])reader["version"])));
 
-                Dictionary<ObjectId, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);
+                Dictionary<DocumentId, Document> result = queryResult.ToDictionary(dataObject => dataObject.Id);
 
                 foreach (Guid id in idList)
                 {
-                    ObjectId objectId = new ObjectId(id);
+                    DocumentId objectId = new DocumentId(id);
                     if (!result.ContainsKey(objectId))
-                        result.Add(objectId, new DataObject(objectId, null, ByteString.Empty));
+                        result.Add(objectId, new Document(objectId, null, ByteString.Empty));
                 }
 
                 return result.Values.ToList().AsReadOnly();

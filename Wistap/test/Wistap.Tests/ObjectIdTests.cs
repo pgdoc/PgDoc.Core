@@ -16,7 +16,7 @@ namespace Wistap.Tests
         [InlineData((short)256)]
         public void Constructor_Success(short value)
         {
-            ObjectId objectId = ObjectId.New(value);
+            DocumentId objectId = DocumentId.New(value);
             Assert.Equal(value, (short)objectId.Type);
         }
     }
