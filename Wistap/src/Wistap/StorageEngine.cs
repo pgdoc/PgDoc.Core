@@ -39,9 +39,9 @@ namespace Wistap
             JArray jsonObjects = new JArray(objectList.Select(item => JObject.FromObject(new
             {
                 i = item.Item1.Id.ToString(),
-                v = item.Item1.Value == null || item.Item2 ? null : JToken.Parse(item.Item1.Value).ToString(),
-                ver = item.Item1.Version.ToString(),
-                c = item.Item2 ? 1 : 0
+                c = item.Item1.Value == null || item.Item2 ? null : JToken.Parse(item.Item1.Value).ToString(),
+                v = item.Item1.Version.ToString(),
+                r = item.Item2 ? 1 : 0
             })).ToArray());
 
             byte[] newVersion = new byte[8];
@@ -53,10 +53,10 @@ namespace Wistap
                     newVersion[i] = md5Hash[i];
             }
 
-            using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_objects", connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@objects", NpgsqlDbType.Jsonb, jsonObjects);
+                command.Parameters.AddWithValue("@documents", NpgsqlDbType.Jsonb, jsonObjects);
                 command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
                 try
@@ -71,7 +71,7 @@ namespace Wistap
                     throw new UpdateConflictException(objectList[0].Item1.Id, objectList[0].Item1.Version);
                 }
                 catch (NpgsqlException exception)
-                when (exception.MessageText == "check_violation" && exception.Hint == "update_objects_conflict")
+                when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
                 {
                     DataObject conflict = objectList.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
                     throw new UpdateConflictException(conflict.Id, conflict.Version);
@@ -86,7 +86,7 @@ namespace Wistap
             if (idList.Count == 0)
                 return new DataObject[0];
 
-            using (NpgsqlCommand command = new NpgsqlCommand("wistap.get_objects", connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("wistap.get_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
@@ -95,7 +95,7 @@ namespace Wistap
                 command,
                 reader => new DataObject(
                     new ObjectId((Guid)reader["id"]),
-                    reader["value"] is DBNull ? null : (string)reader["value"],
+                    reader["content"] is DBNull ? null : (string)reader["content"],
                     new ByteString((byte[])reader["version"])));
 
                 Dictionary<ObjectId, DataObject> result = queryResult.ToDictionary(dataObject => dataObject.Id);

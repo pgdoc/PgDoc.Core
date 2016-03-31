@@ -27,7 +27,7 @@ namespace Wistap.Tests
             this.storage.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
-            command.CommandText = @"TRUNCATE TABLE wistap.object;";
+            command.CommandText = @"TRUNCATE TABLE wistap.document;";
             command.ExecuteNonQuery();
         }
 
