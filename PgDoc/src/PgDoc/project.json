@@ -1,6 +1,6 @@
 ﻿{
   "version": "0.1.0-*",
-  "description": "PgDoc is a package allowing .NET code to use PostgreSQL as a generic document store.",
+  "description": "PgDoc is a package allowing .NET applications to use PostgreSQL as a generic document store.",
   "authors": [ "Flavien Charlon" ],
   "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
   "copyright": "Copyright \u00A9 2016 Flavien Charlon",
