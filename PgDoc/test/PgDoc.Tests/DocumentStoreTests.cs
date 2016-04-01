@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 using Npgsql;
 using Xunit;
 
-namespace Wistap.Tests
+namespace PgDoc.Tests
 {
     public class DocumentStoreTests : IDisposable
     {

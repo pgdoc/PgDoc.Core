@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Wistap
+namespace PgDoc
 {
     /// <summary>
     /// Represents an error caused by the attempt of modifying a record using the wrong base version.

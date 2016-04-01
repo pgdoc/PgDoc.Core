@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Wistap
+namespace PgDoc
 {
     public interface IDocumentStore : IDisposable
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Wistap
+namespace PgDoc
 {
     public class Document
     {

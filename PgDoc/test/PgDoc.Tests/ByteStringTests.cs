@@ -2,7 +2,7 @@
 using System.IO;
 using Xunit;
 
-namespace Wistap.Tests
+namespace PgDoc.Tests
 {
     public class ByteStringTests
     {

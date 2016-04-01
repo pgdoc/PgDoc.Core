@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Wistap
+namespace PgDoc
 {
     /// <summary>
     /// Represents an immutable string of binary data.

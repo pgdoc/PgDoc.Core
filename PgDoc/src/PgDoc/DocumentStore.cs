@@ -10,7 +10,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Wistap
+namespace PgDoc
 {
     public class DocumentStore : IDocumentStore
     {
