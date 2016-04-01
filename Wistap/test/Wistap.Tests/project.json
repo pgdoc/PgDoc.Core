@@ -1,10 +1,9 @@
 ﻿{
-  "version": "1.0.0-*",
-  "description": "Wistap.Tests Class Library",
+  "version": "0.1.0-*",
+  "description": "PgDoc is a package allowing .NET code to use PostgreSQL as a generic document store.",
   "authors": [ "Flavien Charlon" ],
-  "tags": [ "" ],
-  "projectUrl": "",
-  "licenseUrl": "",
+  "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+  "copyright": "Copyright \u00A9 2016 Flavien Charlon",
 
   "dependencies": {
     "Wistap": "0.1.0-*",

@@ -1,10 +1,9 @@
 ﻿{
   "version": "0.1.0-*",
-  "description": "Wistap Class Library",
+  "description": "PgDoc is a package allowing .NET code to use PostgreSQL as a generic document store.",
   "authors": [ "Flavien Charlon" ],
-  "tags": [ "" ],
-  "projectUrl": "",
-  "licenseUrl": "",
+  "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+  "copyright": "Copyright \u00A9 2016 Flavien Charlon",
 
   "dependencies": {
     "npgsql": "3.1.0-alpha6",
@@ -17,15 +16,9 @@
         "System.Data": "4.0.0.0"
       }
     },
+
     "dnxcore50": {
       "dependencies": {
-        "Microsoft.CSharp": "4.0.1-beta-23516",
-        "System.Collections": "4.0.11-beta-23516",
-        "System.Data.Common": "4.0.1-beta-23516",
-        "System.Linq": "4.0.1-beta-23516",
-        "System.Runtime": "4.0.21-beta-23516",
-        "System.Security.Cryptography.Algorithms": "4.0.0-beta-23516",
-        "System.Threading": "4.0.11-beta-23516"
       }
     }
   }
