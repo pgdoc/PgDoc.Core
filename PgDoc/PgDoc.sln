@@ -10,11 +10,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		global.json = global.json
 	EndProjectSection
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Wistap", "src\Wistap\Wistap.xproj", "{A3544C4F-C95A-4383-A641-FD5E22D02074}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "PgDoc", "src\PgDoc\PgDoc.xproj", "{A3544C4F-C95A-4383-A641-FD5E22D02074}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{8D2F7ED7-4934-4852-A5A6-CD89B6BE4FD8}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Wistap.Tests", "test\Wistap.Tests\Wistap.Tests.xproj", "{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "PgDoc.Tests", "test\PgDoc.Tests\PgDoc.Tests.xproj", "{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
