@@ -53,7 +53,7 @@ namespace Wistap
                     newVersion[i] = md5Hash[i];
             }
 
-            using (NpgsqlCommand command = new NpgsqlCommand("wistap.update_documents", connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("update_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@documents", NpgsqlDbType.Jsonb, jsonDocuments);
@@ -86,7 +86,7 @@ namespace Wistap
             if (idList.Count == 0)
                 return new Document[0];
 
-            using (NpgsqlCommand command = new NpgsqlCommand("wistap.get_documents", connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("get_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);

@@ -22,12 +22,12 @@ namespace Wistap.Tests
 
         public DocumentStoreTests()
         {
-            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=postgres;Password=admin;CommandTimeout=1");
+            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=pgdoc;Password=pgdoc;CommandTimeout=1");
             this.store = new DocumentStore(connection);
             this.store.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
-            command.CommandText = @"TRUNCATE TABLE wistap.document;";
+            command.CommandText = @"TRUNCATE TABLE document;";
             command.ExecuteNonQuery();
         }
 
@@ -394,7 +394,7 @@ namespace Wistap.Tests
 
         private static async Task<DocumentStore> CreateDocumentStore()
         {
-            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=postgres;Password=admin;");
+            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=pgdoc;Password=pgdoc;");
 
             DocumentStore engine = new DocumentStore(connection);
             await engine.Initialize();

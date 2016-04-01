@@ -1,6 +1,4 @@
-CREATE SCHEMA wistap;
-
-CREATE TABLE wistap.document
+CREATE TABLE document
 (
     id      uuid PRIMARY KEY,
     index   bigserial,
@@ -13,7 +11,7 @@ CREATE TABLE wistap.document
 ---------------------------------------------------
 --- Update a series of documents
 
-CREATE TYPE wistap.document_update AS
+CREATE TYPE document_update AS
 (
     id uuid,
     body jsonb,
@@ -21,12 +19,11 @@ CREATE TYPE wistap.document_update AS
     check_only boolean
 );
 
-CREATE OR REPLACE FUNCTION wistap.update_documents(documents jsonb, version bytea)
-RETURNS VOID
-AS $$ #variable_conflict use_variable
+CREATE OR REPLACE FUNCTION update_documents(documents jsonb, version bytea)
+RETURNS VOID AS $$ #variable_conflict use_variable
 DECLARE
     conflict_id uuid;
-    document_updates wistap.document_update[];
+    document_updates document_update[];
 BEGIN
 
     -- Parse the input
@@ -41,7 +38,7 @@ BEGIN
 
     -- Insert the new documents
 
-    INSERT INTO wistap.document (id, body, version)
+    INSERT INTO document (id, body, version)
     SELECT document_update.id, NULL, E'\\x'
     FROM UNNEST(document_updates) AS document_update
     ON CONFLICT (id) DO NOTHING;
@@ -49,14 +46,14 @@ BEGIN
     -- This query returns conflicting rows, the result must be empty
     -- "FOR SHARE" ensures existing documents don't get modified before the UPDATE statement
 
-    WITH document AS (
+    WITH document_update AS (
       SELECT document.id, document.version AS old_version, document_update.version AS new_version
-      FROM wistap.document, UNNEST(document_updates) AS document_update
+      FROM document, UNNEST(document_updates) AS document_update
       WHERE document.id = document_update.id
       FOR SHARE OF document
     )
     SELECT id INTO conflict_id
-    FROM document
+    FROM document_update
     WHERE old_version <> new_version;
 
     IF conflict_id IS NOT NULL THEN
@@ -65,7 +62,7 @@ BEGIN
 
     -- Update existing documents
 
-    UPDATE wistap.document
+    UPDATE document
     SET body = document_update.body,
         version = version
     FROM UNNEST(document_updates) AS document_update
@@ -76,13 +73,13 @@ END $$ LANGUAGE plpgsql;
 ---------------------------------------------------
 --- Get a list of documents from their IDs
 
-CREATE OR REPLACE FUNCTION wistap.get_documents(ids uuid[])
-RETURNS TABLE (id uuid, body jsonb, version bytea)
-AS $$ #variable_conflict use_variable BEGIN
+CREATE OR REPLACE FUNCTION get_documents(ids uuid[])
+RETURNS TABLE (id uuid, body jsonb, version bytea) AS $$
+BEGIN
 
     RETURN QUERY
     SELECT document.id, document.body, document.version
-    FROM wistap.document, UNNEST(ids) AS document_id
+    FROM document, UNNEST(ids) AS document_id
     WHERE document.id = document_id;
 
 END $$ LANGUAGE plpgsql;
