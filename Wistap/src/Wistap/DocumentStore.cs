@@ -39,9 +39,9 @@ namespace Wistap
             JArray jsonDocuments = new JArray(documents.Select(item => JObject.FromObject(new
             {
                 i = item.Item1.Id.ToString(),
-                c = item.Item1.Content == null || item.Item2 ? null : JToken.Parse(item.Item1.Content).ToString(),
+                b = item.Item1.Body == null || item.Item2 ? null : JToken.Parse(item.Item1.Body).ToString(),
                 v = item.Item1.Version.ToString(),
-                r = item.Item2 ? 1 : 0
+                c = item.Item2 ? 1 : 0
             })).ToArray());
 
             byte[] newVersion = new byte[8];
@@ -95,7 +95,7 @@ namespace Wistap
                 command,
                 reader => new Document(
                     new DocumentId((Guid)reader["id"]),
-                    reader["content"] is DBNull ? null : (string)reader["content"],
+                    reader["body"] is DBNull ? null : (string)reader["body"],
                     new ByteString((byte[])reader["version"])));
 
                 Dictionary<DocumentId, Document> result = queryResult.ToDictionary(document => document.Id);

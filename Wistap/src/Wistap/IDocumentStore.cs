@@ -9,7 +9,7 @@ namespace Wistap
         Task Initialize();
 
         /// <summary>
-        /// Updates atomically the content of several objects.
+        /// Updates atomically the body of several objects.
         /// </summary>
         /// <param name="updatedDocuments">The documents being updated.</param>
         /// <param name="checkedDocuments">The documents of which the versions are checked, but which are not updated.</param>

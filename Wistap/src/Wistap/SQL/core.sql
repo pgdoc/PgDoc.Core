@@ -4,7 +4,7 @@ CREATE TABLE wistap.document
 (
     id      uuid PRIMARY KEY,
     index   bigserial,
-    content jsonb,
+    body    jsonb,
     version bytea NOT NULL
 );
 
@@ -16,7 +16,7 @@ CREATE TABLE wistap.document
 CREATE TYPE wistap.document_update AS
 (
     id uuid,
-    content jsonb,
+    body jsonb,
     version bytea,
     check_only boolean
 );
@@ -34,14 +34,14 @@ BEGIN
     document_updates = ARRAY(
       SELECT (
         (json_document ->> 'i')::uuid,
-        CASE WHEN json_document ->> 'c' IS NULL THEN NULL ELSE (json_document ->> 'c')::jsonb END,
+        CASE WHEN json_document ->> 'b' IS NULL THEN NULL ELSE (json_document ->> 'b')::jsonb END,
         decode((json_document ->> 'v')::text, 'hex'),
-        (json_document ->> 'r')::boolean)
+        (json_document ->> 'c')::boolean)
       FROM jsonb_array_elements(documents) AS json_document);
 
     -- Insert the new documents
 
-    INSERT INTO wistap.document (id, content, version)
+    INSERT INTO wistap.document (id, body, version)
     SELECT document_update.id, NULL, E'\\x'
     FROM UNNEST(document_updates) AS document_update
     ON CONFLICT (id) DO NOTHING;
@@ -66,7 +66,7 @@ BEGIN
     -- Update existing documents
 
     UPDATE wistap.document
-    SET content = document_update.content,
+    SET body = document_update.body,
         version = version
     FROM UNNEST(document_updates) AS document_update
     WHERE document.id = document_update.id AND NOT document_update.check_only;
@@ -77,11 +77,11 @@ END $$ LANGUAGE plpgsql;
 --- Get a list of documents from their IDs
 
 CREATE OR REPLACE FUNCTION wistap.get_documents(ids uuid[])
-RETURNS TABLE (id uuid, content jsonb, version bytea)
+RETURNS TABLE (id uuid, body jsonb, version bytea)
 AS $$ #variable_conflict use_variable BEGIN
 
     RETURN QUERY
-    SELECT document.id, document.content, document.version
+    SELECT document.id, document.body, document.version
     FROM wistap.document, UNNEST(ids) AS document_id
     WHERE document.id = document_id;
 

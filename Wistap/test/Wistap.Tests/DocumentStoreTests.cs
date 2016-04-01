@@ -12,7 +12,7 @@ namespace Wistap.Tests
     public class DocumentStoreTests : IDisposable
     {
         private const bool Update = false, Insert = true;
-        private const bool ChangeContent = false, CheckVersion = true;
+        private const bool ChangeBody = false, CheckVersion = true;
 
         private static readonly ByteString wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
         private static readonly DocumentId[] ids =
@@ -116,7 +116,7 @@ namespace Wistap.Tests
 
         [Theory]
         [InlineData(CheckVersion)]
-        [InlineData(ChangeContent)]
+        [InlineData(ChangeBody)]
         public async Task UpdateDocuments_ConflictDocumentDoesNotExist(bool checkOnly)
         {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
@@ -133,7 +133,7 @@ namespace Wistap.Tests
 
         [Theory]
         [InlineData(CheckVersion)]
-        [InlineData(ChangeContent)]
+        [InlineData(ChangeBody)]
         public async Task UpdateDocuments_ConflictWrongVersion(bool checkOnly)
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
@@ -152,7 +152,7 @@ namespace Wistap.Tests
 
         [Theory]
         [InlineData(CheckVersion)]
-        [InlineData(ChangeContent)]
+        [InlineData(ChangeBody)]
         public async Task UpdateDocuments_ConflictDocumentAlreadyExists(bool checkOnly)
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
@@ -200,7 +200,7 @@ namespace Wistap.Tests
 
         [Theory]
         [InlineData(CheckVersion)]
-        [InlineData(ChangeContent)]
+        [InlineData(ChangeBody)]
         public async Task UpdateDocuments_MultipleDocumentsConflict(bool checkOnly)
         {
             ByteString version1 = await this.store.UpdateDocument(ids[0], "{'abc':'def'}", ByteString.Empty);
@@ -287,8 +287,8 @@ namespace Wistap.Tests
 
         [Theory]
         // Attempting to modify a document that has been modified outside of the transaction
-        [InlineData(ChangeContent, Update)]
-        [InlineData(ChangeContent, Insert)]
+        [InlineData(ChangeBody, Update)]
+        [InlineData(ChangeBody, Insert)]
         // Attempting to read a document that has been modified outside of the transaction
         [InlineData(CheckVersion, Update)]
         [InlineData(CheckVersion, Insert)]
@@ -322,14 +322,14 @@ namespace Wistap.Tests
 
         [Theory]
         // Write operation waiting for write lock
-        [InlineData(false, ChangeContent, Update)]
-        [InlineData(false, ChangeContent, Insert)]
+        [InlineData(false, ChangeBody, Update)]
+        [InlineData(false, ChangeBody, Insert)]
         // Read operation waiting for write lock
         [InlineData(false, CheckVersion, Update)]
         [InlineData(false, CheckVersion, Insert)]
         // Write operation waiting for read lock
-        [InlineData(true, ChangeContent, Update)]
-        [InlineData(true, ChangeContent, Insert)]
+        [InlineData(true, ChangeBody, Update)]
+        [InlineData(true, ChangeBody, Insert)]
         public async Task UpdateDocuments_WaitForLock(bool isReadLock, bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateDocument("{'abc':'def'}", ByteString.Empty);
@@ -402,9 +402,9 @@ namespace Wistap.Tests
             return engine;
         }
 
-        private async Task<ByteString> UpdateDocument(string content, ByteString version)
+        private async Task<ByteString> UpdateDocument(string body, ByteString version)
         {
-            return await this.store.UpdateDocument(ids[0], content, version);
+            return await this.store.UpdateDocument(ids[0], body, version);
         }
 
         private async Task<ByteString> CheckDocument(ByteString version)
@@ -412,18 +412,18 @@ namespace Wistap.Tests
             return await this.store.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
         }
 
-        private static void AssertDocument(Document document, DocumentId id, string content, ByteString version)
+        private static void AssertDocument(Document document, DocumentId id, string body, ByteString version)
         {
             Assert.Equal(id.Value, document.Id.Value);
 
-            if (content == null)
+            if (body == null)
             {
-                Assert.Null(document.Content);
+                Assert.Null(document.Body);
             }
             else
             {
-                Assert.NotNull(document.Content);
-                Assert.Equal(JObject.Parse(content).ToString(Newtonsoft.Json.Formatting.None), JObject.Parse(document.Content).ToString(Newtonsoft.Json.Formatting.None));
+                Assert.NotNull(document.Body);
+                Assert.Equal(JObject.Parse(body).ToString(Newtonsoft.Json.Formatting.None), JObject.Parse(document.Body).ToString(Newtonsoft.Json.Formatting.None));
             }
 
             Assert.Equal(version, document.Version);
