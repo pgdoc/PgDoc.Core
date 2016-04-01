@@ -73,15 +73,15 @@ namespace Wistap
                 catch (NpgsqlException exception)
                 when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
                 {
-                    Document conflict = documents.First(item => item.Item1.Id.Value.Equals(Guid.Parse(exception.Detail))).Item1;
+                    Document conflict = documents.First(item => item.Item1.Id.Equals(Guid.Parse(exception.Detail))).Item1;
                     throw new UpdateConflictException(conflict.Id, conflict.Version);
                 }
             }
         }
 
-        public async Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<DocumentId> ids)
+        public async Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids)
         {
-            List<Guid> idList = ids.Select(id => id.Value).ToList();
+            List<Guid> idList = ids.ToList();
 
             if (idList.Count == 0)
                 return new Document[0];
@@ -94,17 +94,16 @@ namespace Wistap
                 IReadOnlyList<Document> queryResult = await ExecuteQuery(
                 command,
                 reader => new Document(
-                    new DocumentId((Guid)reader["id"]),
+                    (Guid)reader["id"],
                     reader["body"] is DBNull ? null : (string)reader["body"],
                     new ByteString((byte[])reader["version"])));
 
-                Dictionary<DocumentId, Document> result = queryResult.ToDictionary(document => document.Id);
+                Dictionary<Guid, Document> result = queryResult.ToDictionary(document => document.Id);
 
                 foreach (Guid id in idList)
                 {
-                    DocumentId documentId = new DocumentId(id);
-                    if (!result.ContainsKey(documentId))
-                        result.Add(documentId, new Document(documentId, null, ByteString.Empty));
+                    if (!result.ContainsKey(id))
+                        result.Add(id, new Document(id, null, ByteString.Empty));
                 }
 
                 return result.Values.ToList().AsReadOnly();

@@ -4,11 +4,8 @@ namespace Wistap
 {
     public class Document
     {
-        public Document(DocumentId id, string body, ByteString version)
+        public Document(Guid id, string body, ByteString version)
         {
-            if (id == null)
-                throw new ArgumentNullException(nameof(id));
-
             if (version == null)
                 throw new ArgumentNullException(nameof(version));
 
@@ -17,7 +14,7 @@ namespace Wistap
             this.Version = version;
         }
 
-        public DocumentId Id { get; }
+        public Guid Id { get; }
 
         public string Body { get; }
 

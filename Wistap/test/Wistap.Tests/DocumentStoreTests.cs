@@ -15,8 +15,8 @@ namespace Wistap.Tests
         private const bool ChangeBody = false, CheckVersion = true;
 
         private static readonly ByteString wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
-        private static readonly DocumentId[] ids =
-            Enumerable.Range(0, 32).Select(index => new DocumentId(new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray()))).ToArray();
+        private static readonly Guid[] ids =
+            Enumerable.Range(0, 32).Select(index => new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray())).ToArray();
 
         private readonly DocumentStore store;
 
@@ -256,7 +256,7 @@ namespace Wistap.Tests
         [Fact]
         public async Task GetDocuments_NoDocument()
         {
-            IReadOnlyList<Document> documents = await this.store.GetDocuments(new DocumentId[0]);
+            IReadOnlyList<Document> documents = await this.store.GetDocuments(new Guid[0]);
 
             Assert.Equal(0, documents.Count);
         }
@@ -412,9 +412,9 @@ namespace Wistap.Tests
             return await this.store.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
         }
 
-        private static void AssertDocument(Document document, DocumentId id, string body, ByteString version)
+        private static void AssertDocument(Document document, Guid id, string body, ByteString version)
         {
-            Assert.Equal(id.Value, document.Id.Value);
+            Assert.Equal(id, document.Id);
 
             if (body == null)
             {

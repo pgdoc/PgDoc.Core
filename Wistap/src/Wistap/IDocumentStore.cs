@@ -21,6 +21,6 @@ namespace Wistap
         /// </summary>
         /// <param name="ids">The IDs of the documents to retrieve.</param>
         /// <returns>The task object representing the asynchronous operation.</returns>
-        Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<DocumentId> ids);
+        Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids);
     }
 }
