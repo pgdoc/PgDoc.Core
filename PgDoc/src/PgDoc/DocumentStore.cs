@@ -126,7 +126,7 @@ namespace PgDoc
 
         public DbTransaction StartTransaction()
         {
-            this.transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
+            this.transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead);
             return this.transaction;
         }
 
