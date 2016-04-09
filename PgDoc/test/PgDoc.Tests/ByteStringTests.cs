@@ -112,5 +112,16 @@ namespace PgDoc.Tests
             Assert.True(ByteString.Parse("abcd").Equals((object)ByteString.Parse("abcd")));
             Assert.False(ByteString.Parse("abcd").Equals(4));
         }
+
+        [Fact]
+        public void GetHashCode_Success()
+        {
+            ByteString value1 = ByteString.Parse("000001");
+            ByteString value2 = ByteString.Parse("000002");
+            ByteString value3 = ByteString.Parse("000001");
+
+            Assert.Equal(value1.GetHashCode(), value3.GetHashCode());
+            Assert.NotEqual(value1.GetHashCode(), value2.GetHashCode());
+        }
     }
 }
