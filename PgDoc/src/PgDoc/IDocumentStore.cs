@@ -20,6 +20,10 @@ namespace PgDoc
 {
     public interface IDocumentStore : IDisposable
     {
+        /// <summary>
+        /// Initializes the document store.
+        /// </summary>
+        /// <returns>The task object representing the asynchronous operation.</returns>
         Task Initialize();
 
         /// <summary>
