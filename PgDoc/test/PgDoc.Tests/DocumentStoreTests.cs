@@ -36,7 +36,10 @@ namespace PgDoc.Tests
 
         public DocumentStoreTests()
         {
-            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=pgdoc;Password=pgdoc;CommandTimeout=1");
+            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder(ConfigurationManager.GetSetting("connection_string"));
+            builder.CommandTimeout = 1;
+            NpgsqlConnection connection = new NpgsqlConnection(builder.ToString());
+
             this.store = new DocumentStore(connection);
             this.store.Initialize().Wait();
 
@@ -408,7 +411,7 @@ namespace PgDoc.Tests
 
         private static async Task<DocumentStore> CreateDocumentStore()
         {
-            NpgsqlConnection connection = new NpgsqlConnection("Server=127.0.0.1;Port=5432;Database=wistap;User Id=pgdoc;Password=pgdoc;");
+            NpgsqlConnection connection = new NpgsqlConnection(ConfigurationManager.GetSetting("connection_string"));
 
             DocumentStore engine = new DocumentStore(connection);
             await engine.Initialize();

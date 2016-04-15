@@ -6,6 +6,8 @@
   "copyright": "Copyright © 2016 Flavien Charlon",
 
   "dependencies": {
+    "Microsoft.Extensions.Configuration": "1.0.0-rc1-final",
+    "Microsoft.Extensions.Configuration.Json": "1.0.0-rc1-final",
     "PgDoc": "0.1.0-*",
     "xunit": "2.1.0",
     "xunit.runner.dnx": "2.1.0-rc1-*"
