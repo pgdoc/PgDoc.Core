@@ -36,15 +36,13 @@ namespace PgDoc.Tests
 
         public DocumentStoreTests()
         {
-            NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder(ConfigurationManager.GetSetting("connection_string"));
-            builder.CommandTimeout = 1;
-            NpgsqlConnection connection = new NpgsqlConnection(builder.ToString());
+            NpgsqlConnection connection = new NpgsqlConnection(ConfigurationManager.GetSetting("connection_string"));
 
             this.store = new DocumentStore(connection);
             this.store.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
-            command.CommandText = @"TRUNCATE TABLE document;";
+            command.CommandText = @"TRUNCATE TABLE document; SET statement_timeout TO 500;";
             command.ExecuteNonQuery();
         }
 
@@ -351,6 +349,7 @@ namespace PgDoc.Tests
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateDocument("{'abc':'def'}", ByteString.Empty);
             ByteString updatedVersion;
+            PostgresException exception;
 
             DocumentStore connection2 = await CreateDocumentStore();
             using (DbTransaction transaction = connection2.StartTransaction())
@@ -362,7 +361,7 @@ namespace PgDoc.Tests
                     : await connection2.UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
 
                 // Try to update or check the version of the document with transaction 1
-                await Assert.ThrowsAsync<TaskCanceledException>(() =>
+                exception = await Assert.ThrowsAsync<PostgresException>(() =>
                     checkOnly
                     ? CheckDocument(initialVersion)
                     : UpdateDocument("{'mno':'pqr'}", initialVersion));
@@ -371,6 +370,8 @@ namespace PgDoc.Tests
             }
 
             Document document = await this.store.GetDocument(ids[0]);
+
+            Assert.Equal("57014", exception.SqlState);
 
             if (isReadLock)
                 AssertDocument(document, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);

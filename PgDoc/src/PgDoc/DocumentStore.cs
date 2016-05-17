@@ -79,12 +79,12 @@ namespace PgDoc
 
                     return new ByteString(newVersion);
                 }
-                catch (NpgsqlException exception)
-                when (exception.Code == LockConflictSqlState)
+                catch (PostgresException exception)
+                when (exception.SqlState == LockConflictSqlState)
                 {
                     throw new UpdateConflictException(documents[0].Item1.Id, documents[0].Item1.Version);
                 }
-                catch (NpgsqlException exception)
+                catch (PostgresException exception)
                 when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
                 {
                     Document conflict = documents.First(item => item.Item1.Id.Equals(Guid.Parse(exception.Detail))).Item1;
