@@ -85,7 +85,8 @@ BEGIN
     FROM UNNEST(document_updates) AS document_update
     WHERE document.id = document_update.id AND NOT document_update.check_only;
 
-END $$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql
+SECURITY DEFINER;
 
 -- ======================================================================
 -- get_documents: Gets a list of documents from their IDs.
