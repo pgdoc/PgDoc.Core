@@ -8,7 +8,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>a3544c4f-c95a-4383-a641-fd5e22d02074</ProjectGuid>
     <RootNamespace>PgDoc</RootNamespace>
-    <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">..\..\artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">.\obj</BaseIntermediateOutputPath>
     <OutputPath Condition="'$(OutputPath)'=='' ">.\bin\</OutputPath>
   </PropertyGroup>
   <PropertyGroup>
