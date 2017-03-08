@@ -79,7 +79,7 @@ namespace PgDoc
 
             byte[] result = new byte[hexValue.Length >> 1];
 
-            for (int i = 0; i < hexValue.Length >> 1; ++i)
+            for (int i = 0; i < (hexValue.Length >> 1); ++i)
                 result[i] = (byte)((GetHexValue(hexValue[i << 1]) << 4) + (GetHexValue(hexValue[(i << 1) + 1])));
 
             return new ByteString(result);

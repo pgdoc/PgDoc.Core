@@ -1,20 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E2D4B5AC-1AA7-4B4E-A3B2-08F5CE56D555}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{46845C96-4345-4F09-81DA-1B7A906B2E57}"
-	ProjectSection(SolutionItems) = preProject
-		global.json = global.json
-	EndProjectSection
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "PgDoc", "src\PgDoc\PgDoc.xproj", "{A3544C4F-C95A-4383-A641-FD5E22D02074}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{8D2F7ED7-4934-4852-A5A6-CD89B6BE4FD8}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "PgDoc.Tests", "test\PgDoc.Tests\PgDoc.Tests.xproj", "{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PgDoc", "src\PgDoc\PgDoc.csproj", "{A3544C4F-C95A-4383-A641-FD5E22D02074}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PgDoc.Tests", "test\PgDoc.Tests\PgDoc.Tests.csproj", "{1D12ACA3-31DA-4E3A-AA1C-CD5644530C05}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,16 +21,16 @@ Global
 		{A3544C4F-C95A-4383-A641-FD5E22D02074}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A3544C4F-C95A-4383-A641-FD5E22D02074}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A3544C4F-C95A-4383-A641-FD5E22D02074}.Release|Any CPU.Build.0 = Release|Any CPU
-		{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{091A695A-F73E-41FA-9BC3-4CA99EB7C51B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D12ACA3-31DA-4E3A-AA1C-CD5644530C05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D12ACA3-31DA-4E3A-AA1C-CD5644530C05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D12ACA3-31DA-4E3A-AA1C-CD5644530C05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D12ACA3-31DA-4E3A-AA1C-CD5644530C05}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A3544C4F-C95A-4383-A641-FD5E22D02074} = {E2D4B5AC-1AA7-4B4E-A3B2-08F5CE56D555}
-		{091A695A-F73E-41FA-9BC3-4CA99EB7C51B} = {8D2F7ED7-4934-4852-A5A6-CD89B6BE4FD8}
+		{1D12ACA3-31DA-4E3A-AA1C-CD5644530C05} = {8D2F7ED7-4934-4852-A5A6-CD89B6BE4FD8}
 	EndGlobalSection
 EndGlobal
