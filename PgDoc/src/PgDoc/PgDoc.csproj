@@ -1,12 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>PgDoc</PackageId>
-    <AssemblyName>PgDoc</AssemblyName>
-    <Version>0.2.3</Version>
+    <VersionPrefix>0.2.3</VersionPrefix>
+    <TargetFramework>netstandard1.3</TargetFramework>
+
     <Description>PgDoc is a package allowing .NET applications to use PostgreSQL as a generic document store.</Description>
     <Authors>Flavien Charlon</Authors>
-    <TargetFramework>netstandard1.3</TargetFramework>
     <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
     <Copyright>Copyright © 2016 Flavien Charlon</Copyright>
   </PropertyGroup>

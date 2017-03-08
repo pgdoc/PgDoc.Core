@@ -1,12 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>PgDoc.Tests</PackageId>
-    <AssemblyName>PgDoc.Tests</AssemblyName>
-    <Version>0.2.3</Version>
-    <Description>PgDoc is a package allowing .NET applications to use PostgreSQL as a generic document store.</Description>
-    <Authors>Flavien Charlon</Authors>
     <TargetFramework>netcoreapp1.0</TargetFramework>
+
+    <Authors>Flavien Charlon</Authors>
     <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
     <Copyright>Copyright © 2016 Flavien Charlon</Copyright>
   </PropertyGroup>
