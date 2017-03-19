@@ -311,6 +311,7 @@ namespace PgDoc.Tests
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateDocument("{'abc':'def'}", ByteString.Empty);
             ByteString updatedVersion;
+            ByteString transactionVersion;
             UpdateConflictException exception;
 
             using (DbTransaction transaction = this.store.StartTransaction())
@@ -321,15 +322,19 @@ namespace PgDoc.Tests
                 // Update the document with transaction 2
                 updatedVersion = await (await CreateDocumentStore()).UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
 
+                // Read the document with transaction 1, as if it was still unmodified
+                transactionVersion = (await this.store.GetDocument(ids[0])).Version;
+
                 // Try to update or check the version of the document with transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                     checkOnly
-                    ? CheckDocument(initialVersion)
-                    : UpdateDocument("{'mno':'pqr'}", initialVersion));
+                    ? CheckDocument(transactionVersion)
+                    : UpdateDocument("{'mno':'pqr'}", transactionVersion));
             }
 
             Document document = await this.store.GetDocument(ids[0]);
 
+            Assert.Equal(initialVersion, transactionVersion);
             AssertDocument(document, ids[0], "{'ghi':'jkl'}", updatedVersion);
             Assert.Equal(ids[0], exception.Id);
             Assert.Equal(initialVersion, exception.Version);
