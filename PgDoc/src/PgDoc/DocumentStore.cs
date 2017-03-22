@@ -124,9 +124,9 @@ namespace PgDoc
             }
         }
 
-        public DbTransaction StartTransaction()
+        public DbTransaction StartTransaction(IsolationLevel isolationLevel)
         {
-            this.transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead);
+            this.transaction = connection.BeginTransaction(isolationLevel);
             return this.transaction;
         }
 

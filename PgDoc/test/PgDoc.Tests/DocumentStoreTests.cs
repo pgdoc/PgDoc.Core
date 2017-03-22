@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
@@ -285,7 +286,7 @@ namespace PgDoc.Tests
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            using (this.store.StartTransaction())
+            using (this.store.StartTransaction(IsolationLevel.ReadCommitted))
             {
                 await this.store.UpdateDocument(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
@@ -314,10 +315,10 @@ namespace PgDoc.Tests
             ByteString transactionVersion;
             UpdateConflictException exception;
 
-            using (DbTransaction transaction = this.store.StartTransaction())
+            using (DbTransaction transaction = this.store.StartTransaction(IsolationLevel.RepeatableRead))
             {
                 // Start transaction 1
-                await this.store.GetDocument(ids[1]);
+                await this.store.GetDocument(ids[0]);
 
                 // Update the document with transaction 2
                 updatedVersion = await (await CreateDocumentStore()).UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
@@ -357,7 +358,7 @@ namespace PgDoc.Tests
             PostgresException exception;
 
             DocumentStore connection2 = await CreateDocumentStore();
-            using (DbTransaction transaction = connection2.StartTransaction())
+            using (DbTransaction transaction = connection2.StartTransaction(IsolationLevel.ReadCommitted))
             {
                 // Lock the document with transaction 2
                 updatedVersion =
@@ -390,7 +391,7 @@ namespace PgDoc.Tests
             ByteString initialVersion = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
             DocumentStore connection2 = await CreateDocumentStore();
-            using (DbTransaction transaction = connection2.StartTransaction())
+            using (DbTransaction transaction = connection2.StartTransaction(IsolationLevel.ReadCommitted))
             {
                 // Lock the document for read with transaction 2
                 await connection2.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) });
