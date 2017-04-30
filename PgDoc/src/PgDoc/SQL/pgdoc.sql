@@ -19,7 +19,6 @@
 CREATE TABLE document
 (
     id      uuid PRIMARY KEY,
-    index   bigserial,
     body    jsonb,
     version bytea NOT NULL
 );
