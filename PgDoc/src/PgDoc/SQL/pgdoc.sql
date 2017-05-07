@@ -97,7 +97,7 @@ BEGIN
 
     RETURN QUERY
     SELECT document.id, document.body, document.version
-    FROM document, UNNEST(ids) AS document_id
-    WHERE document.id = document_id;
+    FROM document
+    WHERE document.id = ANY(ids);
 
 END $$ LANGUAGE plpgsql;

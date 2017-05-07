@@ -20,12 +20,9 @@ namespace PgDoc
     {
         public Document(Guid id, string body, ByteString version)
         {
-            if (version == null)
-                throw new ArgumentNullException(nameof(version));
-
             this.Id = id;
             this.Body = body;
-            this.Version = version;
+            this.Version = version ?? throw new ArgumentNullException(nameof(version));
         }
 
         public Guid Id { get; }
