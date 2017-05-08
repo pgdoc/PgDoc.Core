@@ -43,7 +43,7 @@ namespace PgDoc.Tests
             this.store.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
-            command.CommandText = @"TRUNCATE TABLE document; SET statement_timeout TO 500;";
+            command.CommandText = @"TRUNCATE TABLE document;";
             command.ExecuteNonQuery();
         }
 
@@ -308,29 +308,31 @@ namespace PgDoc.Tests
         // Attempting to read a document that has been modified outside of the transaction
         [InlineData(CheckVersion, Update)]
         [InlineData(CheckVersion, Insert)]
-        public async Task UpdateDocuments_SerializationError(bool checkOnly, bool isInsert)
+        public async Task UpdateDocuments_SerializationFailure(bool checkOnly, bool isInsert)
         {
             ByteString initialVersion = isInsert ? ByteString.Empty : await UpdateDocument("{'abc':'def'}", ByteString.Empty);
             ByteString updatedVersion;
             ByteString transactionVersion;
             UpdateConflictException exception;
 
-            using (DbTransaction transaction = this.store.StartTransaction(IsolationLevel.RepeatableRead))
+            DocumentStore connection1 = await CreateDocumentStore();
+            DocumentStore connection2 = await CreateDocumentStore();
+            using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.RepeatableRead))
             {
                 // Start transaction 1
-                await this.store.GetDocument(ids[0]);
+                await connection1.GetDocument(ids[0]);
 
                 // Update the document with transaction 2
-                updatedVersion = await (await CreateDocumentStore()).UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
+                updatedVersion = await UpdateDocument("{'ghi':'jkl'}", initialVersion, connection2);
 
                 // Read the document with transaction 1, as if it was still unmodified
-                transactionVersion = (await this.store.GetDocument(ids[0])).Version;
+                transactionVersion = (await connection1.GetDocument(ids[0])).Version;
 
                 // Try to update or check the version of the document with transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                     checkOnly
-                    ? CheckDocument(transactionVersion)
-                    : UpdateDocument("{'mno':'pqr'}", transactionVersion));
+                    ? CheckDocument(transactionVersion, connection1)
+                    : UpdateDocument("{'mno':'pqr'}", transactionVersion, connection1));
             }
 
             Document document = await this.store.GetDocument(ids[0]);
@@ -357,20 +359,21 @@ namespace PgDoc.Tests
             ByteString updatedVersion;
             PostgresException exception;
 
-            DocumentStore connection2 = await CreateDocumentStore();
-            using (DbTransaction transaction = connection2.StartTransaction(IsolationLevel.ReadCommitted))
+            DocumentStore connection1 = await CreateDocumentStore(shortTimeout: true);
+            DocumentStore connection2 = await CreateDocumentStore(shortTimeout: true);
+            using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.ReadCommitted))
             {
-                // Lock the document with transaction 2
+                // Lock the document with transaction 1
                 updatedVersion =
                     isReadLock
-                    ? await connection2.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) })
-                    : await connection2.UpdateDocument(ids[0], "{'ghi':'jkl'}", initialVersion);
+                    ? await CheckDocument(initialVersion, connection1)
+                    : await UpdateDocument("{'ghi':'jkl'}", initialVersion, connection1);
 
-                // Try to update or check the version of the document with transaction 1
+                // Try to update or check the version of the document with transaction 2
                 exception = await Assert.ThrowsAsync<PostgresException>(() =>
                     checkOnly
-                    ? CheckDocument(initialVersion)
-                    : UpdateDocument("{'mno':'pqr'}", initialVersion));
+                    ? CheckDocument(initialVersion, connection2)
+                    : UpdateDocument("{'mno':'pqr'}", initialVersion, connection2));
 
                 transaction.Commit();
             }
@@ -390,14 +393,15 @@ namespace PgDoc.Tests
         {
             ByteString initialVersion = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
+            DocumentStore connection1 = await CreateDocumentStore();
             DocumentStore connection2 = await CreateDocumentStore();
             using (DbTransaction transaction = connection2.StartTransaction(IsolationLevel.ReadCommitted))
             {
                 // Lock the document for read with transaction 2
-                await connection2.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", initialVersion) });
+                await CheckDocument(initialVersion, connection2);
 
                 // Check the version of the document with transaction 1
-                await CheckDocument(initialVersion);
+                await CheckDocument(initialVersion, connection1);
 
                 transaction.Commit();
             }
@@ -405,6 +409,55 @@ namespace PgDoc.Tests
             Document document = await this.store.GetDocument(ids[0]);
 
             AssertDocument(document, ids[0], "{'abc':'def'}", initialVersion);
+        }
+
+        [Fact]
+        public async Task UpdateDocuments_DeadlockDetected()
+        {
+            ByteString initialVersion = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
+            Task<ByteString> update1;
+            Task<ByteString> update2;
+
+            DocumentStore connection1 = await CreateDocumentStore();
+            DocumentStore connection2 = await CreateDocumentStore();
+            using (DbTransaction transaction1 = connection1.StartTransaction(IsolationLevel.ReadCommitted))
+            using (DbTransaction transaction2 = connection2.StartTransaction(IsolationLevel.ReadCommitted))
+            {
+                // Lock the document with both transactions
+                await CheckDocument(initialVersion, connection1);
+                await CheckDocument(initialVersion, connection2);
+
+                // Try to update the document with both transactions
+                update1 = UpdateDocument("{'ghi':'jkl'}", initialVersion, connection1);
+                update2 = UpdateDocument("{'mno':'pqr'}", initialVersion, connection2);
+
+                // One transaction succeeds and the other is terminated
+                await Task.WhenAny(update1);
+                await Task.WhenAny(update2);
+
+                transaction1.Commit();
+                transaction2.Commit();
+            }
+
+            Document document = await this.store.GetDocument(ids[0]);
+
+            UpdateConflictException exception;
+            if (update1.Status == TaskStatus.Faulted)
+            {
+                // Transaction 2 succeeded
+                AssertDocument(document, ids[0], "{'mno':'pqr'}", update2.Result);
+                exception = update1.Exception.InnerException as UpdateConflictException;
+            }
+            else
+            {
+                // Transaction 1 succeeded
+                AssertDocument(document, ids[0], "{'ghi':'jkl'}", update1.Result);
+                exception = update2.Exception.InnerException as UpdateConflictException;
+            }
+
+            Assert.NotNull(exception);
+            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(initialVersion, exception.Version);
         }
 
         #endregion
@@ -416,24 +469,37 @@ namespace PgDoc.Tests
 
         #region Helper Methods
 
-        private static async Task<DocumentStore> CreateDocumentStore()
+        private static async Task<DocumentStore> CreateDocumentStore(bool shortTimeout = false)
         {
             NpgsqlConnection connection = new NpgsqlConnection(ConfigurationManager.GetSetting("connection_string"));
 
             DocumentStore engine = new DocumentStore(connection);
             await engine.Initialize();
 
+            if (shortTimeout)
+            {
+                NpgsqlCommand command = connection.CreateCommand();
+                command.CommandText = @"SET statement_timeout TO 500;";
+                await command.ExecuteNonQueryAsync();
+            }
+
             return engine;
         }
 
-        private async Task<ByteString> UpdateDocument(string body, ByteString version)
+        private async Task<ByteString> UpdateDocument(string body, ByteString version, DocumentStore store = null)
         {
-            return await this.store.UpdateDocument(ids[0], body, version);
+            if (store == null)
+                store = this.store;
+
+            return await store.UpdateDocument(ids[0], body, version);
         }
 
-        private async Task<ByteString> CheckDocument(ByteString version)
+        private async Task<ByteString> CheckDocument(ByteString version, DocumentStore store = null)
         {
-            return await this.store.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
+            if (store == null)
+                store = this.store;
+
+            return await store.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
         }
 
         private static void AssertDocument(Document document, Guid id, string body, ByteString version)

@@ -28,7 +28,8 @@ namespace PgDoc
 {
     public class DocumentStore : IDocumentStore
     {
-        private const string LockConflictSqlState = "40001";
+        private const string SerializationFailureSqlState = "40001";
+        private const string DeadlockDetectedSqlState = "40P01";
 
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
@@ -80,7 +81,7 @@ namespace PgDoc
                     return new ByteString(newVersion);
                 }
                 catch (PostgresException exception)
-                when (exception.SqlState == LockConflictSqlState)
+                when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
                 {
                     throw new UpdateConflictException(documents[0].Item1.Id, documents[0].Item1.Version);
                 }
