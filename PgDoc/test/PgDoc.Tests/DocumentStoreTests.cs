@@ -343,6 +343,55 @@ namespace PgDoc.Tests
             Assert.Equal(initialVersion, exception.Version);
         }
 
+        [Fact]
+        public async Task UpdateDocuments_DeadlockDetected()
+        {
+            ByteString initialVersion = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
+            Task<ByteString> update1;
+            Task<ByteString> update2;
+
+            DocumentStore connection1 = await CreateDocumentStore();
+            DocumentStore connection2 = await CreateDocumentStore();
+            using (DbTransaction transaction1 = connection1.StartTransaction(IsolationLevel.ReadCommitted))
+            using (DbTransaction transaction2 = connection2.StartTransaction(IsolationLevel.ReadCommitted))
+            {
+                // Lock the document with both transactions
+                await CheckDocument(initialVersion, connection1);
+                await CheckDocument(initialVersion, connection2);
+
+                // Try to update the document with both transactions
+                update1 = UpdateDocument("{'ghi':'jkl'}", initialVersion, connection1);
+                update2 = UpdateDocument("{'mno':'pqr'}", initialVersion, connection2);
+
+                // One transaction succeeds and the other is terminated
+                await Task.WhenAny(update1);
+                await Task.WhenAny(update2);
+
+                transaction1.Commit();
+                transaction2.Commit();
+            }
+
+            Document document = await this.store.GetDocument(ids[0]);
+
+            UpdateConflictException exception;
+            if (update1.Status == TaskStatus.Faulted)
+            {
+                // Transaction 2 succeeded
+                AssertDocument(document, ids[0], "{'mno':'pqr'}", update2.Result);
+                exception = update1.Exception.InnerException as UpdateConflictException;
+            }
+            else
+            {
+                // Transaction 1 succeeded
+                AssertDocument(document, ids[0], "{'ghi':'jkl'}", update1.Result);
+                exception = update2.Exception.InnerException as UpdateConflictException;
+            }
+
+            Assert.NotNull(exception);
+            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(initialVersion, exception.Version);
+        }
+
         [Theory]
         // Write operation waiting for write lock
         [InlineData(false, ChangeBody, Update)]
@@ -395,13 +444,13 @@ namespace PgDoc.Tests
 
             DocumentStore connection1 = await CreateDocumentStore();
             DocumentStore connection2 = await CreateDocumentStore();
-            using (DbTransaction transaction = connection2.StartTransaction(IsolationLevel.ReadCommitted))
+            using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.ReadCommitted))
             {
-                // Lock the document for read with transaction 2
-                await CheckDocument(initialVersion, connection2);
-
-                // Check the version of the document with transaction 1
+                // Lock the document for read with transaction 1
                 await CheckDocument(initialVersion, connection1);
+
+                // Check the version of the document with transaction 2
+                await CheckDocument(initialVersion, connection2);
 
                 transaction.Commit();
             }
@@ -409,55 +458,6 @@ namespace PgDoc.Tests
             Document document = await this.store.GetDocument(ids[0]);
 
             AssertDocument(document, ids[0], "{'abc':'def'}", initialVersion);
-        }
-
-        [Fact]
-        public async Task UpdateDocuments_DeadlockDetected()
-        {
-            ByteString initialVersion = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
-            Task<ByteString> update1;
-            Task<ByteString> update2;
-
-            DocumentStore connection1 = await CreateDocumentStore();
-            DocumentStore connection2 = await CreateDocumentStore();
-            using (DbTransaction transaction1 = connection1.StartTransaction(IsolationLevel.ReadCommitted))
-            using (DbTransaction transaction2 = connection2.StartTransaction(IsolationLevel.ReadCommitted))
-            {
-                // Lock the document with both transactions
-                await CheckDocument(initialVersion, connection1);
-                await CheckDocument(initialVersion, connection2);
-
-                // Try to update the document with both transactions
-                update1 = UpdateDocument("{'ghi':'jkl'}", initialVersion, connection1);
-                update2 = UpdateDocument("{'mno':'pqr'}", initialVersion, connection2);
-
-                // One transaction succeeds and the other is terminated
-                await Task.WhenAny(update1);
-                await Task.WhenAny(update2);
-
-                transaction1.Commit();
-                transaction2.Commit();
-            }
-
-            Document document = await this.store.GetDocument(ids[0]);
-
-            UpdateConflictException exception;
-            if (update1.Status == TaskStatus.Faulted)
-            {
-                // Transaction 2 succeeded
-                AssertDocument(document, ids[0], "{'mno':'pqr'}", update2.Result);
-                exception = update1.Exception.InnerException as UpdateConflictException;
-            }
-            else
-            {
-                // Transaction 1 succeeded
-                AssertDocument(document, ids[0], "{'ghi':'jkl'}", update1.Result);
-                exception = update2.Exception.InnerException as UpdateConflictException;
-            }
-
-            Assert.NotNull(exception);
-            Assert.Equal(ids[0], exception.Id);
-            Assert.Equal(initialVersion, exception.Version);
         }
 
         #endregion
