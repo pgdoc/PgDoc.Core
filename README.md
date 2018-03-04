@@ -2,7 +2,7 @@
 
 Document stores offer a lot of flexibility in terms of data structures, however they rarely support ACID transactions. On the other hand, SQL databases are typically ACID-compliant but require managing a SQL schema in addition to application code.
 
-PgDoc enables .NET applications to use PostgreSQL as a generic document store. It leverages the ACID-compliance of PostgreSQL and provides the ability to update, create or modify multiple documents as part of atomic batches.
+PgDoc is a library for using PostgreSQL as a generic document store. It leverages the ACID-compliance of PostgreSQL and provides the ability to update, create or modify multiple documents as part of atomic batches.
 
 ## License
 

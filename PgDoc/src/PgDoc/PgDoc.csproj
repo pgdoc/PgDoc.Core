@@ -1,18 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>0.2.4</VersionPrefix>
+    <VersionPrefix>0.2.5</VersionPrefix>
     <TargetFramework>netstandard1.3</TargetFramework>
 
-    <Description>PgDoc enables .NET applications to use PostgreSQL as a generic document store.</Description>
+    <Title>PgDoc</Title>
+    <Description>PgDoc is a library for using PostgreSQL as a generic document store.</Description>
     <Authors>Flavien Charlon</Authors>
     <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
     <Copyright>Copyright © 2016 Flavien Charlon</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.2" />
-    <PackageReference Include="npgsql" Version="3.2.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
+    <PackageReference Include="npgsql" Version="3.2.7" />
   </ItemGroup>
 
 </Project>
