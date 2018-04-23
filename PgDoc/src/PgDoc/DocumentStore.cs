@@ -16,13 +16,12 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using NpgsqlTypes;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace PgDoc
 {
@@ -33,6 +32,11 @@ namespace PgDoc
 
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
+
+        static DocumentStore()
+        {
+            NpgsqlConnection.MapCompositeGlobally<DocumentUpdate>("document_update");
+        }
 
         public DocumentStore(NpgsqlConnection connection)
         {
@@ -51,27 +55,27 @@ namespace PgDoc
                 .Select(item => Tuple.Create(item, false))
                 .Concat(checkedDocuments.Select(item => Tuple.Create(item, true))).ToList();
 
-            JArray jsonDocuments = new JArray(documents.Select(item => JObject.FromObject(new
+            DocumentUpdate[] updates = documents.Select(item => new DocumentUpdate()
             {
-                i = item.Item1.Id.ToString(),
-                b = item.Item1.Body == null || item.Item2 ? null : JToken.Parse(item.Item1.Body).ToString(),
-                v = item.Item1.Version.ToString(),
-                c = item.Item2 ? 1 : 0
-            })).ToArray());
+                Id = item.Item1.Id,
+                Body = item.Item1.Body == null || item.Item2 ? null : JToken.Parse(item.Item1.Body).ToString(),
+                Version = item.Item1.Version.ToByteArray(),
+                CheckOnly = item.Item2
+            }).ToArray();
 
-            byte[] newVersion = new byte[8];
-
-            using (MD5 md5 = MD5.Create())
-            {
-                byte[] md5Hash = md5.ComputeHash(Encoding.UTF8.GetBytes(jsonDocuments.ToString(Newtonsoft.Json.Formatting.None)));
-                for (int i = 0; i < 8; i++)
-                    newVersion[i] = md5Hash[i];
-            }
+            byte[] newVersion = new byte[16];
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+                rng.GetBytes(newVersion);
 
             using (NpgsqlCommand command = new NpgsqlCommand("update_documents", connection, this.transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@documents", NpgsqlDbType.Jsonb, jsonDocuments);
+                command.Parameters.Add(new NpgsqlParameter()
+                {
+                    ParameterName = "@document_updates",
+                    Value = updates,
+                    NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Composite
+                });
                 command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
                 try
@@ -147,6 +151,17 @@ namespace PgDoc
             }
 
             return result.AsReadOnly();
+        }
+
+        private class DocumentUpdate
+        {
+            public Guid Id { get; set; }
+
+            public string Body { get; set; }
+
+            public byte[] Version { get; set; }
+
+            public bool CheckOnly { get; set; }
         }
     }
 }

@@ -35,22 +35,11 @@ CREATE TYPE document_update AS
     check_only boolean
 );
 
-CREATE OR REPLACE FUNCTION update_documents(documents jsonb, version bytea)
+CREATE OR REPLACE FUNCTION update_documents(document_updates document_update[], version bytea)
 RETURNS VOID AS $$ #variable_conflict use_variable
 DECLARE
     conflict_id uuid;
-    document_updates document_update[];
 BEGIN
-
-    -- Parse the input
-
-    document_updates = ARRAY(
-      SELECT (
-        (json_document ->> 'i')::uuid,
-        CASE WHEN json_document ->> 'b' IS NULL THEN NULL ELSE (json_document ->> 'b')::jsonb END,
-        decode((json_document ->> 'v')::text, 'hex'),
-        (json_document ->> 'c')::boolean)
-      FROM jsonb_array_elements(documents) AS json_document);
 
     -- Insert the new documents
 
