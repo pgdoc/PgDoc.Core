@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>0.3.0</VersionPrefix>
-    <TargetFramework>netstandard1.3</TargetFramework>
+    <VersionPrefix>0.4.0</VersionPrefix>
+    <TargetFramework>netstandard2.0</TargetFramework>
 
     <Title>PgDoc</Title>
     <Description>PgDoc is a library for using PostgreSQL as a generic document store.</Description>
@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="npgsql" Version="3.2.7" />
+    <PackageReference Include="npgsql" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

@@ -35,7 +35,7 @@ namespace PgDoc
 
         static DocumentStore()
         {
-            NpgsqlConnection.MapCompositeGlobally<DocumentUpdate>("document_update");
+            NpgsqlConnection.GlobalTypeMapper.MapComposite<DocumentUpdate>("document_update");
         }
 
         public DocumentStore(NpgsqlConnection connection)
@@ -73,8 +73,7 @@ namespace PgDoc
                 command.Parameters.Add(new NpgsqlParameter()
                 {
                     ParameterName = "@document_updates",
-                    Value = updates,
-                    NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Composite
+                    Value = updates
                 });
                 command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
