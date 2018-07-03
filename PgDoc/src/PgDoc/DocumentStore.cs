@@ -33,11 +33,6 @@ namespace PgDoc
         private readonly NpgsqlConnection connection;
         private NpgsqlTransaction transaction = null;
 
-        static DocumentStore()
-        {
-            NpgsqlConnection.GlobalTypeMapper.MapComposite<DocumentUpdate>("document_update");
-        }
-
         public DocumentStore(NpgsqlConnection connection)
         {
             this.connection = connection;
@@ -46,7 +41,10 @@ namespace PgDoc
         public async Task Initialize()
         {
             if (connection.State == ConnectionState.Closed)
+            {
                 await connection.OpenAsync();
+                connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
+            }
         }
 
         public async Task<ByteString> UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
