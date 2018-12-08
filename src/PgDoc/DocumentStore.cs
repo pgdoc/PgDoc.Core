@@ -35,7 +35,7 @@ namespace PgDoc
 
         public DocumentStore(NpgsqlConnection connection)
         {
-            this.connection = connection;
+            this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
         }
 
         public async Task Initialize()
@@ -108,11 +108,11 @@ namespace PgDoc
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
                 IReadOnlyList<Document> queryResult = await ExecuteQuery(
-                command,
-                reader => new Document(
-                    (Guid)reader["id"],
-                    reader["body"] is DBNull ? null : (string)reader["body"],
-                    new ByteString((byte[])reader["version"])));
+                    command,
+                    reader => new Document(
+                        (Guid)reader["id"],
+                        reader["body"] is DBNull ? null : (string)reader["body"],
+                        new ByteString((byte[])reader["version"])));
 
                 Dictionary<Guid, Document> result = queryResult.ToDictionary(document => document.Id);
 

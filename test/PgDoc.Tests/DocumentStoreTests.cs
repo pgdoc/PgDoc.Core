@@ -47,6 +47,17 @@ namespace PgDoc.Tests
             command.ExecuteNonQuery();
         }
 
+        #region Constructor
+
+        [Fact]
+        public void Constructor_Exception()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => new DocumentStore(null));
+        }
+
+        #endregion
+
         #region UpdateDocument
 
         [Theory]
