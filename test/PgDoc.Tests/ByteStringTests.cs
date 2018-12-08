@@ -89,7 +89,7 @@ namespace PgDoc.Tests
 
             Assert.Equal(3, data.ToStream().Length);
             Assert.Equal(data, new ByteString(result));
-            Assert.Equal(false, data.ToStream().CanWrite);
+            Assert.False(data.ToStream().CanWrite);
         }
 
         [Fact]
