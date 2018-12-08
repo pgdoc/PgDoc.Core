@@ -31,7 +31,7 @@ namespace PgDoc.Tests
             Assert.Equal("{'abc':'def'}", document1.Body);
             Assert.Equal(ByteString.Parse("abcd"), document1.Version);
             Assert.Equal(Guid.Parse(guid), document2.Id);
-            Assert.Equal(null, document2.Body);
+            Assert.Null(document2.Body);
             Assert.Equal(ByteString.Parse("abcd"), document2.Version);
         }
 

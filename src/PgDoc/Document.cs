@@ -18,7 +18,7 @@ namespace PgDoc
 {
     public class Document
     {
-        public Document(Guid id, string body, ByteString version)
+        public Document(Guid id, string? body, ByteString version)
         {
             this.Id = id;
             this.Body = body;
@@ -27,7 +27,7 @@ namespace PgDoc
 
         public Guid Id { get; }
 
-        public string Body { get; }
+        public string? Body { get; }
 
         public ByteString Version { get; }
     }

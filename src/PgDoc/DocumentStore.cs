@@ -31,7 +31,7 @@ namespace PgDoc
         private const string DeadlockDetectedSqlState = "40P01";
 
         private readonly NpgsqlConnection connection;
-        private NpgsqlTransaction transaction = null;
+        private NpgsqlTransaction? transaction = null;
 
         public DocumentStore(NpgsqlConnection connection)
         {
@@ -154,9 +154,9 @@ namespace PgDoc
         {
             public Guid Id { get; set; }
 
-            public string Body { get; set; }
+            public string? Body { get; set; }
 
-            public byte[] Version { get; set; }
+            public byte[] Version { get; set; } = new byte[0];
 
             public bool CheckOnly { get; set; }
         }

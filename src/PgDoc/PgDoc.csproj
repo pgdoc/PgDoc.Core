@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>0.4.2</VersionPrefix>
+    <VersionPrefix>0.5.0</VersionPrefix>
     <TargetFramework>netstandard2.0</TargetFramework>
 
     <Title>PgDoc</Title>
@@ -13,7 +13,13 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
-    <PackageReference Include="npgsql" Version="4.0.3" />
+    <PackageReference Include="npgsql" Version="4.0.4" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <LangVersion>8.0</LangVersion>
+    <NullableReferenceTypes>true</NullableReferenceTypes>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
 
 </Project>
