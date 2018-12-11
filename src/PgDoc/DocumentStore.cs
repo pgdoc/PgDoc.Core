@@ -19,6 +19,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using NpgsqlTypes;
@@ -56,7 +57,7 @@ namespace PgDoc
             DocumentUpdate[] updates = documents.Select(item => new DocumentUpdate()
             {
                 Id = item.Item1.Id,
-                Body = item.Item1.Body == null || item.Item2 ? null : JToken.Parse(item.Item1.Body).ToString(),
+                Body = item.Item1.Body == null || item.Item2 ? null : JToken.Parse(item.Item1.Body).ToString(Formatting.None),
                 Version = item.Item1.Version.ToByteArray(),
                 CheckOnly = item.Item2
             }).ToArray();

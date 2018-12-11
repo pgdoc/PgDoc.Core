@@ -18,6 +18,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using Xunit;
@@ -59,6 +60,13 @@ namespace PgDoc.Tests
         #endregion
 
         #region UpdateDocument
+
+        [Fact]
+        public async Task UpdateDocuments_Exception()
+        {
+            await Assert.ThrowsAsync<JsonReaderException>(
+                () => UpdateDocument("{'abc':}", ByteString.Empty));
+        }
 
         [Theory]
         [InlineData("{'abc':'def'}")]
