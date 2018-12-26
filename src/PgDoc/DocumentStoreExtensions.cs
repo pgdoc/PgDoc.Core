@@ -13,7 +13,6 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PgDoc
@@ -22,7 +21,7 @@ namespace PgDoc
     {
         public static Task<ByteString> UpdateDocuments(this IDocumentStore documentStore, params Document[] objects)
         {
-            return documentStore.UpdateDocuments((IEnumerable<Document>)objects, (IEnumerable<Document>)new Document[0]);
+            return documentStore.UpdateDocuments(objects, new Document[0]);
         }
 
         public static Task<ByteString> UpdateDocument(this IDocumentStore documentStore, Guid id, string body, ByteString version)

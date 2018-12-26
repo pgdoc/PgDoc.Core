@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>1.0.1</VersionPrefix>
+    <VersionPrefix>1.0.2</VersionPrefix>
     <Title>PgDoc</Title>
     <Description>PgDoc is a library for using PostgreSQL as a generic document store.</Description>
     <Authors>Flavien Charlon</Authors>
