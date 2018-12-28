@@ -273,7 +273,7 @@ namespace PgDoc.Tests
             IReadOnlyList<Document> documents = await this.store.GetDocuments(new[] { ids[0] });
 
             Assert.Equal(1, documents.Count);
-            AssertDocument(documents.First(document => document.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
+            AssertDocument(documents[0], ids[0], "{'abc':'def'}", version1);
         }
 
         [Fact]
@@ -281,11 +281,13 @@ namespace PgDoc.Tests
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            IReadOnlyList<Document> documents = await this.store.GetDocuments(new[] { ids[0], ids[1] });
+            IReadOnlyList<Document> documents = await this.store.GetDocuments(new[] { ids[0], ids[2], ids[0], ids[1] });
 
-            Assert.Equal(2, documents.Count);
-            AssertDocument(documents.First(document => document.Id.Equals(ids[0])), ids[0], "{'abc':'def'}", version1);
-            AssertDocument(documents.First(document => document.Id.Equals(ids[1])), ids[1], null, ByteString.Empty);
+            Assert.Equal(4, documents.Count);
+            AssertDocument(documents[0], ids[0], "{'abc':'def'}", version1);
+            AssertDocument(documents[1], ids[2], null, ByteString.Empty);
+            AssertDocument(documents[2], ids[0], "{'abc':'def'}", version1);
+            AssertDocument(documents[3], ids[1], null, ByteString.Empty);
         }
 
         [Fact]

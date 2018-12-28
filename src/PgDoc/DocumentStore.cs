@@ -115,15 +115,18 @@ namespace PgDoc
                         reader["body"] is DBNull ? null : (string)reader["body"],
                         new ByteString((byte[])reader["version"])));
 
-                Dictionary<Guid, Document> result = queryResult.ToDictionary(document => document.Id);
+                Dictionary<Guid, Document> documents = queryResult.ToDictionary(document => document.Id);
 
+                List<Document> result = new List<Document>(idList.Count);
                 foreach (Guid id in idList)
                 {
-                    if (!result.ContainsKey(id))
-                        result.Add(id, new Document(id, null, ByteString.Empty));
+                    if (documents.TryGetValue(id, out Document document))
+                        result.Add(document);
+                    else
+                        result.Add(new Document(id, null, ByteString.Empty));
                 }
 
-                return result.Values.ToList().AsReadOnly();
+                return result.AsReadOnly();
             }
         }
 
