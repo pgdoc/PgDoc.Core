@@ -25,10 +25,19 @@ namespace PgDoc
             this.Version = version ?? throw new ArgumentNullException(nameof(version));
         }
 
+        /// <summary>
+        /// Gets the unique identifier of the document.
+        /// </summary>
         public Guid Id { get; }
 
+        /// <summary>
+        /// Gets the JSON body of the document as a string, or null if the document does not exist.
+        /// </summary>
         public string? Body { get; }
 
+        /// <summary>
+        /// Gets the current version of the document.
+        /// </summary>
         public ByteString Version { get; }
     }
 }
