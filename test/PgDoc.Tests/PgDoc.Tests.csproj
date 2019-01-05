@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
 
-    <Description>PgDoc is a library for using PostgreSQL as a generic document store.</Description>
+    <Description>PgDoc is a library for using PostgreSQL as a JSON document store.</Description>
     <Authors>Flavien Charlon</Authors>
     <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
     <Copyright>Copyright © 2016 Flavien Charlon</Copyright>
