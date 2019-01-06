@@ -10,7 +10,7 @@ Run the [SQL script in `src/PgDoc/SQL/pgdoc.sql`](src/PgDoc/SQL/pgdoc.sql) to cr
 
 Documents are stored in a single table with three columns:
 
-* `body`: The JSON document itself. It can be any valid JSON object, including nested objects and nested arrays. This is a `jsonb` column, and it is possible to query and index any nested field. This column is `NULL` if the document has been deleted.
+* `body`: The JSON data itself. It can include nested objects and nested arrays. This is a `jsonb` column, and it is possible to query and index any nested field. This column is `NULL` if the document has been deleted.
 * `id`: The unique identifier of the document, of type `uuid`.
 * `version`: The current version of the document. Any update to a document must specify the version being updated. This ensures documents can be read by the application, and later updated in a safe fashion.
 
@@ -36,19 +36,9 @@ public class Document
 }
 ```
 
-## Deleting and creating documents
+## Initialization
 
-Retrieving a documents that doesn't exist will return a document with the `Body` property set to null. This can be either because the document has never been created, or because it has been deleted.
-
-In addition, the `Version` property of a document that has never been created is always set to `ByteString.Empty`.
-
-PgDoc has no concept of inserting or deleting. They are both treated as an update.
-
-Creating a new document is equivalent to updating a document from a null body to a non-null body. Deleting a document is equivalent to updating a document from a non-null body to a null body.
-
-## Usage
-
-### Initialize the document store
+Start by creating an instance of the `DocumentStore` class, and calling the `Initialize` method.
 
 ```csharp
 NpgsqlConnection databaseConnection = new NpgsqlConnection(connectionString);
@@ -56,28 +46,31 @@ IDocumentStore documentStore = new DocumentStore(databaseConnection);
 await documentStore.Initialize();
 ```
 
-### Create a new document
+## Retrieving a document
 
-```csharp
-Guid documentId = Guid.NewGuid();
-
-Document newDocument = new Document(
-    id: documentId,
-    body: "{'key':'inital_value'}",
-    version: ByteString.Empty);
-
-await documentStore.UpdateDocuments(newDocument);
-```
-
-### Retrieve a document
+Use the `GetDocuments` method (or the `GetDocument` extension method) to retrieve one or more documents by ID.
 
 ```csharp
 Document document = await documentStore.GetDocument(documentId);
 ```
 
-### Update a document
+Attempting to retrieve a document that doesn't exist will return a `Document` object with a `Body` property set to null. This can be either because the document has not been created yet, or because it has been deleted.
+
+## Updating
+
+Updating a document is done in three steps:
+
+1. Retrieve the current document.
+2. Update the document in the application.
+3. Call `UpdateDocuments` to store the updated document in the database.
+
+PgDoc relies on optimistic concurrency to guarantee consistency. When a document is updated, the version of the document being updated must be supplied. If it doesn't match the current version of the document, the update will fail and an `UpdateConflictException` will be thrown.
 
 ```csharp
+// Retrieve the document to update
+Document document = await documentStore.GetDocument(documentId);
+
+// Create the new version of the document with an updated body
 Document updatedDocument = new Document(
     id: document.Id,
     body: "{'key':'updated_value'}",
@@ -86,11 +79,34 @@ Document updatedDocument = new Document(
 await documentStore.UpdateDocuments(updatedDocument);
 ```
 
-### Delete a document
+It is also possible to atomically update several documents at once by passing multiple documents to `UpdateDocuments`. If any of the documents fails the version check, none of the documents will be updated.
+
+## Deleting and creating documents
+
+PgDoc has no concept of inserting or deleting. They are both treated as an update.
+
+Creating a new document is equivalent to updating a document from a null body to a non-null body. The initial value of the `Version` property of a document that has never been created is always `ByteString.Empty`.
 
 ```csharp
+// Generate a random ID for the new document
+Guid documentId = Guid.NewGuid();
+
+// Create the new document
+Document newDocument = new Document(
+    id: documentId,
+    body: "{'key':'inital_value'}",
+    version: ByteString.Empty);
+
+await documentStore.UpdateDocuments(newDocument);
+```
+
+Deleting a document is equivalent to updating a document from a non-null body to a null body.
+
+```csharp
+// Retrieve the document to delete
 Document document = await documentStore.GetDocument(documentId);
 
+// Create the new version of the document with a null body
 Document deletedDocument = new Document(
     id: document.Id,
     body: null,
