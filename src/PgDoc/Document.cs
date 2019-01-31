@@ -39,5 +39,12 @@ namespace PgDoc
         /// Gets the current version of the document.
         /// </summary>
         public ByteString Version { get; }
+
+        public void Deconstruct(out Guid id, out string? body, out ByteString version)
+        {
+            id = this.Id;
+            body = this.Body;
+            version = this.Version;
+        }
     }
 }
