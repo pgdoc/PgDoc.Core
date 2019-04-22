@@ -19,18 +19,18 @@ namespace PgDoc.Tests
 {
     public class DocumentTests
     {
-        private static readonly string guid = "f81428a9-0bd9-4d75-95bf-976225f24cf1";
+        private static readonly string _guid = "f81428a9-0bd9-4d75-95bf-976225f24cf1";
 
         [Fact]
         public void Constructor_Success()
         {
-            Document document1 = new Document(Guid.Parse(guid), "{'abc':'def'}", ByteString.Parse("abcd"));
-            Document document2 = new Document(Guid.Parse(guid), null, ByteString.Parse("abcd"));
+            Document document1 = new Document(Guid.Parse(_guid), "{'abc':'def'}", ByteString.Parse("abcd"));
+            Document document2 = new Document(Guid.Parse(_guid), null, ByteString.Parse("abcd"));
 
-            Assert.Equal(Guid.Parse(guid), document1.Id);
+            Assert.Equal(Guid.Parse(_guid), document1.Id);
             Assert.Equal("{'abc':'def'}", document1.Body);
             Assert.Equal(ByteString.Parse("abcd"), document1.Version);
-            Assert.Equal(Guid.Parse(guid), document2.Id);
+            Assert.Equal(Guid.Parse(_guid), document2.Id);
             Assert.Null(document2.Body);
             Assert.Equal(ByteString.Parse("abcd"), document2.Version);
         }
@@ -39,17 +39,17 @@ namespace PgDoc.Tests
         public void Constructor_Exception()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new Document(Guid.Parse(guid), "{'abc':'def'}", null));
+                () => new Document(Guid.Parse(_guid), "{'abc':'def'}", null));
         }
 
         [Fact]
         public void Deconstruct_Success()
         {
-            Document document = new Document(Guid.Parse(guid), "{'abc':'def'}", ByteString.Parse("abcd"));
+            Document document = new Document(Guid.Parse(_guid), "{'abc':'def'}", ByteString.Parse("abcd"));
 
             (Guid id, string body, ByteString version) = document;
 
-            Assert.Equal(Guid.Parse(guid), id);
+            Assert.Equal(Guid.Parse(_guid), id);
             Assert.Equal("{'abc':'def'}", body);
             Assert.Equal(ByteString.Parse("abcd"), version);
         }

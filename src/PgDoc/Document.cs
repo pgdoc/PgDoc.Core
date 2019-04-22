@@ -20,9 +20,9 @@ namespace PgDoc
     {
         public Document(Guid id, string? body, ByteString version)
         {
-            this.Id = id;
-            this.Body = body;
-            this.Version = version ?? throw new ArgumentNullException(nameof(version));
+            Id = id;
+            Body = body;
+            Version = version ?? throw new ArgumentNullException(nameof(version));
         }
 
         /// <summary>
@@ -42,9 +42,9 @@ namespace PgDoc
 
         public void Deconstruct(out Guid id, out string? body, out ByteString version)
         {
-            id = this.Id;
-            body = this.Body;
-            version = this.Version;
+            id = Id;
+            body = Body;
+            version = Version;
         }
     }
 }

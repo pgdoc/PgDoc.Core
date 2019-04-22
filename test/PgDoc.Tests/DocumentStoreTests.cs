@@ -30,18 +30,18 @@ namespace PgDoc.Tests
         private const bool Update = false, Insert = true;
         private const bool ChangeBody = false, CheckVersion = true;
 
-        private static readonly ByteString wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
-        private static readonly Guid[] ids =
+        private static readonly ByteString _wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
+        private static readonly Guid[] _ids =
             Enumerable.Range(0, 32).Select(index => new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray())).ToArray();
 
-        private readonly DocumentStore store;
+        private readonly DocumentStore _store;
 
         public DocumentStoreTests()
         {
             NpgsqlConnection connection = new NpgsqlConnection(ConfigurationManager.GetSetting("connection_string"));
 
-            this.store = new DocumentStore(connection);
-            this.store.Initialize().Wait();
+            _store = new DocumentStore(connection);
+            _store.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
             command.CommandText = @"TRUNCATE TABLE document;";
@@ -75,9 +75,9 @@ namespace PgDoc.Tests
         {
             ByteString version = await UpdateDocument(to, ByteString.Empty);
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], to, version);
+            AssertDocument(document, _ids[0], to, version);
             Assert.Equal(16, version.Value.Count);
         }
 
@@ -91,9 +91,9 @@ namespace PgDoc.Tests
             ByteString version1 = await UpdateDocument(from, ByteString.Empty);
             ByteString version2 = await UpdateDocument(to, version1);
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], to, version2);
+            AssertDocument(document, _ids[0], to, version2);
             Assert.Equal(16, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
@@ -103,9 +103,9 @@ namespace PgDoc.Tests
         {
             ByteString version = await CheckDocument(ByteString.Empty);
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], null, ByteString.Empty);
+            AssertDocument(document, _ids[0], null, ByteString.Empty);
             Assert.Equal(16, version.Value.Count);
         }
 
@@ -117,9 +117,9 @@ namespace PgDoc.Tests
             ByteString version1 = await UpdateDocument(from, ByteString.Empty);
             ByteString version2 = await CheckDocument(version1);
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], from, version1);
+            AssertDocument(document, _ids[0], from, version1);
             Assert.Equal(16, version2.Value.Count);
             Assert.NotEqual(version1, version2);
         }
@@ -132,9 +132,9 @@ namespace PgDoc.Tests
             await CheckDocument(ByteString.Empty);
             ByteString version = await UpdateDocument(to, ByteString.Empty);
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], to, version);
+            AssertDocument(document, _ids[0], to, version);
             Assert.Equal(16, version.Value.Count);
         }
 
@@ -144,9 +144,9 @@ namespace PgDoc.Tests
             await CheckDocument(ByteString.Empty);
             await CheckDocument(ByteString.Empty);
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], null, ByteString.Empty);
+            AssertDocument(document, _ids[0], null, ByteString.Empty);
         }
 
         [Theory]
@@ -156,14 +156,14 @@ namespace PgDoc.Tests
         {
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 checkOnly
-                ? CheckDocument(wrongVersion)
-                : UpdateDocument("{'abc':'def'}", wrongVersion));
+                ? CheckDocument(_wrongVersion)
+                : UpdateDocument("{'abc':'def'}", _wrongVersion));
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], null, ByteString.Empty);
-            Assert.Equal(ids[0], exception.Id);
-            Assert.Equal(wrongVersion, exception.Version);
+            AssertDocument(document, _ids[0], null, ByteString.Empty);
+            Assert.Equal(_ids[0], exception.Id);
+            Assert.Equal(_wrongVersion, exception.Version);
         }
 
         [Theory]
@@ -175,14 +175,14 @@ namespace PgDoc.Tests
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                 checkOnly
-                ? CheckDocument(wrongVersion)
-                : UpdateDocument("{'ghi':'jkl'}", wrongVersion));
+                ? CheckDocument(_wrongVersion)
+                : UpdateDocument("{'ghi':'jkl'}", _wrongVersion));
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], "{'abc':'def'}", version1);
-            Assert.Equal(ids[0], exception.Id);
-            Assert.Equal(wrongVersion, exception.Version);
+            AssertDocument(document, _ids[0], "{'abc':'def'}", version1);
+            Assert.Equal(_ids[0], exception.Id);
+            Assert.Equal(_wrongVersion, exception.Version);
         }
 
         [Theory]
@@ -197,40 +197,40 @@ namespace PgDoc.Tests
                 ? CheckDocument(ByteString.Empty)
                 : UpdateDocument("{'ghi':'jkl'}", ByteString.Empty));
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], "{'abc':'def'}", version1);
-            Assert.Equal(ids[0], exception.Id);
+            AssertDocument(document, _ids[0], "{'abc':'def'}", version1);
+            Assert.Equal(_ids[0], exception.Id);
             Assert.Equal(ByteString.Empty, exception.Version);
         }
 
         [Fact]
         public async Task UpdateDocuments_MultipleDocumentsSuccess()
         {
-            ByteString version1 = await this.store.UpdateDocument(ids[0], "{'abc':'def'}", ByteString.Empty);
-            ByteString version2 = await this.store.UpdateDocument(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
+            ByteString version1 = await _store.UpdateDocument(_ids[0], "{'abc':'def'}", ByteString.Empty);
+            ByteString version2 = await _store.UpdateDocument(_ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
-            ByteString version3 = await this.store.UpdateDocuments(
+            ByteString version3 = await _store.UpdateDocuments(
                 new Document[]
                 {
-                    new Document(ids[0], "{'v':'1'}", version1),
-                    new Document(ids[2], "{'v':'2'}", ByteString.Empty)
+                    new Document(_ids[0], "{'v':'1'}", version1),
+                    new Document(_ids[2], "{'v':'2'}", ByteString.Empty)
                 },
                 new Document[]
                 {
-                    new Document(ids[1], "{'v':'3'}", version2),
-                    new Document(ids[3], "{'v':'4'}", ByteString.Empty)
+                    new Document(_ids[1], "{'v':'3'}", version2),
+                    new Document(_ids[3], "{'v':'4'}", ByteString.Empty)
                 });
 
-            Document document1 = await this.store.GetDocument(ids[0]);
-            Document document2 = await this.store.GetDocument(ids[1]);
-            Document document3 = await this.store.GetDocument(ids[2]);
-            Document document4 = await this.store.GetDocument(ids[3]);
+            Document document1 = await _store.GetDocument(_ids[0]);
+            Document document2 = await _store.GetDocument(_ids[1]);
+            Document document3 = await _store.GetDocument(_ids[2]);
+            Document document4 = await _store.GetDocument(_ids[3]);
 
-            AssertDocument(document1, ids[0], "{'v':'1'}", version3);
-            AssertDocument(document2, ids[1], "{'ghi':'jkl'}", version2);
-            AssertDocument(document3, ids[2], "{'v':'2'}", version3);
-            AssertDocument(document4, ids[3], null, ByteString.Empty);
+            AssertDocument(document1, _ids[0], "{'v':'1'}", version3);
+            AssertDocument(document2, _ids[1], "{'ghi':'jkl'}", version2);
+            AssertDocument(document3, _ids[2], "{'v':'2'}", version3);
+            AssertDocument(document4, _ids[3], null, ByteString.Empty);
         }
 
         [Theory]
@@ -238,27 +238,27 @@ namespace PgDoc.Tests
         [InlineData(ChangeBody)]
         public async Task UpdateDocuments_MultipleDocumentsConflict(bool checkOnly)
         {
-            ByteString version1 = await this.store.UpdateDocument(ids[0], "{'abc':'def'}", ByteString.Empty);
+            ByteString version1 = await _store.UpdateDocument(_ids[0], "{'abc':'def'}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(async delegate ()
             {
                 if (checkOnly)
-                    await this.store.UpdateDocuments(
-                        new Document[] { new Document(ids[0], "{'ghi':'jkl'}", version1) },
-                        new Document[] { new Document(ids[1], "{'mno':'pqr'}", wrongVersion) });
+                    await _store.UpdateDocuments(
+                        new Document[] { new Document(_ids[0], "{'ghi':'jkl'}", version1) },
+                        new Document[] { new Document(_ids[1], "{'mno':'pqr'}", _wrongVersion) });
                 else
-                    await this.store.UpdateDocuments(
-                        new Document(ids[0], "{'ghi':'jkl'}", version1),
-                        new Document(ids[1], "{'mno':'pqr'}", wrongVersion));
+                    await _store.UpdateDocuments(
+                        new Document(_ids[0], "{'ghi':'jkl'}", version1),
+                        new Document(_ids[1], "{'mno':'pqr'}", _wrongVersion));
             });
 
-            Document document1 = await this.store.GetDocument(ids[0]);
-            Document document2 = await this.store.GetDocument(ids[1]);
+            Document document1 = await _store.GetDocument(_ids[0]);
+            Document document2 = await _store.GetDocument(_ids[1]);
 
-            AssertDocument(document1, ids[0], "{'abc':'def'}", version1);
-            AssertDocument(document2, ids[1], null, ByteString.Empty);
-            Assert.Equal(ids[1], exception.Id);
-            Assert.Equal(wrongVersion, exception.Version);
+            AssertDocument(document1, _ids[0], "{'abc':'def'}", version1);
+            AssertDocument(document2, _ids[1], null, ByteString.Empty);
+            Assert.Equal(_ids[1], exception.Id);
+            Assert.Equal(_wrongVersion, exception.Version);
         }
 
         #endregion
@@ -270,10 +270,10 @@ namespace PgDoc.Tests
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            IReadOnlyList<Document> documents = await this.store.GetDocuments(new[] { ids[0] });
+            IReadOnlyList<Document> documents = await _store.GetDocuments(new[] { _ids[0] });
 
             Assert.Equal(1, documents.Count);
-            AssertDocument(documents[0], ids[0], "{'abc':'def'}", version1);
+            AssertDocument(documents[0], _ids[0], "{'abc':'def'}", version1);
         }
 
         [Fact]
@@ -281,19 +281,19 @@ namespace PgDoc.Tests
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            IReadOnlyList<Document> documents = await this.store.GetDocuments(new[] { ids[0], ids[2], ids[0], ids[1] });
+            IReadOnlyList<Document> documents = await _store.GetDocuments(new[] { _ids[0], _ids[2], _ids[0], _ids[1] });
 
             Assert.Equal(4, documents.Count);
-            AssertDocument(documents[0], ids[0], "{'abc':'def'}", version1);
-            AssertDocument(documents[1], ids[2], null, ByteString.Empty);
-            AssertDocument(documents[2], ids[0], "{'abc':'def'}", version1);
-            AssertDocument(documents[3], ids[1], null, ByteString.Empty);
+            AssertDocument(documents[0], _ids[0], "{'abc':'def'}", version1);
+            AssertDocument(documents[1], _ids[2], null, ByteString.Empty);
+            AssertDocument(documents[2], _ids[0], "{'abc':'def'}", version1);
+            AssertDocument(documents[3], _ids[1], null, ByteString.Empty);
         }
 
         [Fact]
         public async Task GetDocuments_NoDocument()
         {
-            IReadOnlyList<Document> documents = await this.store.GetDocuments(new Guid[0]);
+            IReadOnlyList<Document> documents = await _store.GetDocuments(new Guid[0]);
 
             Assert.Equal(0, documents.Count);
         }
@@ -307,19 +307,19 @@ namespace PgDoc.Tests
         {
             ByteString version1 = await UpdateDocument("{'abc':'def'}", ByteString.Empty);
 
-            using (this.store.StartTransaction(IsolationLevel.ReadCommitted))
+            using (_store.StartTransaction(IsolationLevel.ReadCommitted))
             {
-                await this.store.UpdateDocument(ids[1], "{'ghi':'jkl'}", ByteString.Empty);
+                await _store.UpdateDocument(_ids[1], "{'ghi':'jkl'}", ByteString.Empty);
 
                 UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
-                    UpdateDocument("{'mno':'pqr'}", wrongVersion));
+                    UpdateDocument("{'mno':'pqr'}", _wrongVersion));
             }
 
-            Document document1 = await this.store.GetDocument(ids[0]);
-            Document document2 = await this.store.GetDocument(ids[1]);
+            Document document1 = await _store.GetDocument(_ids[0]);
+            Document document2 = await _store.GetDocument(_ids[1]);
 
-            AssertDocument(document1, ids[0], "{'abc':'def'}", version1);
-            AssertDocument(document2, ids[1], null, ByteString.Empty);
+            AssertDocument(document1, _ids[0], "{'abc':'def'}", version1);
+            AssertDocument(document2, _ids[1], null, ByteString.Empty);
         }
 
         [Theory]
@@ -341,13 +341,13 @@ namespace PgDoc.Tests
             using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.RepeatableRead))
             {
                 // Start transaction 1
-                await connection1.GetDocument(ids[0]);
+                await connection1.GetDocument(_ids[0]);
 
                 // Update the document with transaction 2
                 updatedVersion = await UpdateDocument("{'ghi':'jkl'}", initialVersion, connection2);
 
                 // Read the document with transaction 1, as if it was still unmodified
-                transactionVersion = (await connection1.GetDocument(ids[0])).Version;
+                transactionVersion = (await connection1.GetDocument(_ids[0])).Version;
 
                 // Try to update or check the version of the document with transaction 1
                 exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
@@ -356,11 +356,11 @@ namespace PgDoc.Tests
                     : UpdateDocument("{'mno':'pqr'}", transactionVersion, connection1));
             }
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
             Assert.Equal(initialVersion, transactionVersion);
-            AssertDocument(document, ids[0], "{'ghi':'jkl'}", updatedVersion);
-            Assert.Equal(ids[0], exception.Id);
+            AssertDocument(document, _ids[0], "{'ghi':'jkl'}", updatedVersion);
+            Assert.Equal(_ids[0], exception.Id);
             Assert.Equal(initialVersion, exception.Version);
         }
 
@@ -392,24 +392,24 @@ namespace PgDoc.Tests
                 transaction2.Commit();
             }
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
             UpdateConflictException exception;
             if (update1.Status == TaskStatus.Faulted)
             {
                 // Transaction 2 succeeded
-                AssertDocument(document, ids[0], "{'mno':'pqr'}", update2.Result);
+                AssertDocument(document, _ids[0], "{'mno':'pqr'}", update2.Result);
                 exception = update1.Exception.InnerException as UpdateConflictException;
             }
             else
             {
                 // Transaction 1 succeeded
-                AssertDocument(document, ids[0], "{'ghi':'jkl'}", update1.Result);
+                AssertDocument(document, _ids[0], "{'ghi':'jkl'}", update1.Result);
                 exception = update2.Exception.InnerException as UpdateConflictException;
             }
 
             Assert.NotNull(exception);
-            Assert.Equal(ids[0], exception.Id);
+            Assert.Equal(_ids[0], exception.Id);
             Assert.Equal(initialVersion, exception.Version);
         }
 
@@ -448,14 +448,14 @@ namespace PgDoc.Tests
                 transaction.Commit();
             }
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
             Assert.Equal("57014", exception.SqlState);
 
             if (isReadLock)
-                AssertDocument(document, ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
+                AssertDocument(document, _ids[0], isInsert ? null : "{'abc':'def'}", initialVersion);
             else
-                AssertDocument(document, ids[0], "{'ghi':'jkl'}", updatedVersion);
+                AssertDocument(document, _ids[0], "{'ghi':'jkl'}", updatedVersion);
         }
 
         [Fact]
@@ -476,16 +476,16 @@ namespace PgDoc.Tests
                 transaction.Commit();
             }
 
-            Document document = await this.store.GetDocument(ids[0]);
+            Document document = await _store.GetDocument(_ids[0]);
 
-            AssertDocument(document, ids[0], "{'abc':'def'}", initialVersion);
+            AssertDocument(document, _ids[0], "{'abc':'def'}", initialVersion);
         }
 
         #endregion
 
         public void Dispose()
         {
-            this.store.Dispose();
+            _store.Dispose();
         }
 
         #region Helper Methods
@@ -510,17 +510,17 @@ namespace PgDoc.Tests
         private async Task<ByteString> UpdateDocument(string body, ByteString version, DocumentStore store = null)
         {
             if (store == null)
-                store = this.store;
+                store = _store;
 
-            return await store.UpdateDocument(ids[0], body, version);
+            return await store.UpdateDocument(_ids[0], body, version);
         }
 
         private async Task<ByteString> CheckDocument(ByteString version, DocumentStore store = null)
         {
             if (store == null)
-                store = this.store;
+                store = _store;
 
-            return await store.UpdateDocuments(new Document[0], new[] { new Document(ids[0], "{'ignored':'ignored'}", version) });
+            return await store.UpdateDocuments(new Document[0], new[] { new Document(_ids[0], "{'ignored':'ignored'}", version) });
         }
 
         private static void AssertDocument(Document document, Guid id, string body, ByteString version)

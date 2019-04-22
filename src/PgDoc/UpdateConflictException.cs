@@ -28,8 +28,8 @@ namespace PgDoc
         public UpdateConflictException(Guid id, ByteString version)
             : base($"The object '{id}' has been modified.")
         {
-            this.Id = id;
-            this.Version = version;
+            Id = id;
+            Version = version;
         }
 
         /// <summary>

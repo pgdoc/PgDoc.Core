@@ -26,7 +26,7 @@ namespace PgDoc
     /// </summary>
     public class ByteString : IEquatable<ByteString>
     {
-        private readonly byte[] data;
+        private readonly byte[] _data;
 
         static ByteString()
         {
@@ -39,8 +39,8 @@ namespace PgDoc
         /// <param name="data">An enumeration of bytes used to initialize the instance.</param>
         public ByteString(IEnumerable<byte> data)
         {
-            this.data = data.ToArray();
-            this.Value = new ReadOnlyCollection<byte>(this.data);
+            _data = data.ToArray();
+            Value = new ReadOnlyCollection<byte>(_data);
         }
 
         /// <summary>
@@ -49,9 +49,9 @@ namespace PgDoc
         /// <param name="data">The byte array used to initialize the instance</param>
         public ByteString(byte[] data)
         {
-            this.data = new byte[data.Length];
-            Buffer.BlockCopy(data, 0, this.data, 0, data.Length);
-            this.Value = new ReadOnlyCollection<byte>(this.data);
+            _data = new byte[data.Length];
+            Buffer.BlockCopy(data, 0, _data, 0, data.Length);
+            Value = new ReadOnlyCollection<byte>(_data);
         }
 
         /// <summary>
@@ -101,8 +101,8 @@ namespace PgDoc
         /// <returns>A byte array representing this <see cref="ByteString"/> instance.</returns>
         public byte[] ToByteArray()
         {
-            byte[] result = new byte[data.Length];
-            Buffer.BlockCopy(data, 0, result, 0, data.Length);
+            byte[] result = new byte[_data.Length];
+            Buffer.BlockCopy(_data, 0, result, 0, _data.Length);
             return result;
         }
 
@@ -112,7 +112,7 @@ namespace PgDoc
         /// <returns>A <see cref="Stream"/> representing this <see cref="ByteString"/> instance.</returns>
         public Stream ToStream()
         {
-            return new MemoryStream(this.data, 0, this.data.Length, false);
+            return new MemoryStream(_data, 0, _data.Length, false);
         }
 
         /// <summary>
@@ -128,11 +128,11 @@ namespace PgDoc
             }
             else
             {
-                if (this.data.Length != other.data.Length)
+                if (_data.Length != other._data.Length)
                     return false;
 
-                for (int i = 0; i < other.data.Length; i++)
-                    if (this.data[i] != other.data[i])
+                for (int i = 0; i < other._data.Length; i++)
+                    if (_data[i] != other._data[i])
                         return false;
 
                 return true;
@@ -147,7 +147,7 @@ namespace PgDoc
         public override bool Equals(object obj)
         {
             if (obj is ByteString)
-                return this.Equals((ByteString)obj);
+                return Equals((ByteString)obj);
             else
                 return false;
         }
@@ -161,7 +161,7 @@ namespace PgDoc
             unchecked
             {
                 int result = 0;
-                foreach (byte b in this.data)
+                foreach (byte b in _data)
                     result = (result * 31) ^ b;
 
                 return result;
@@ -174,9 +174,9 @@ namespace PgDoc
         /// <returns>The hexadecimal representation of the current object.</returns>
         public override string ToString()
         {
-            StringBuilder hex = new StringBuilder(this.data.Length * 2);
+            StringBuilder hex = new StringBuilder(_data.Length * 2);
 
-            foreach (byte value in this.data)
+            foreach (byte value in _data)
                 hex.AppendFormat("{0:x2}", value);
 
             return hex.ToString();

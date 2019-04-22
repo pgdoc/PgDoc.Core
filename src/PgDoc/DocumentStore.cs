@@ -31,20 +31,20 @@ namespace PgDoc
         private const string SerializationFailureSqlState = "40001";
         private const string DeadlockDetectedSqlState = "40P01";
 
-        private readonly NpgsqlConnection connection;
-        private NpgsqlTransaction? transaction = null;
+        private readonly NpgsqlConnection _connection;
+        private NpgsqlTransaction? _transaction = null;
 
         public DocumentStore(NpgsqlConnection connection)
         {
-            this.connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         }
 
         public async Task Initialize()
         {
-            if (connection.State == ConnectionState.Closed)
+            if (_connection.State == ConnectionState.Closed)
             {
-                await connection.OpenAsync();
-                connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
+                await _connection.OpenAsync();
+                _connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
             }
         }
 
@@ -66,7 +66,7 @@ namespace PgDoc
             using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
                 rng.GetBytes(newVersion);
 
-            using (NpgsqlCommand command = new NpgsqlCommand("update_documents", connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("update_documents", _connection, _transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.Add(new NpgsqlParameter()
@@ -103,7 +103,7 @@ namespace PgDoc
             if (idList.Count == 0)
                 return new Document[0];
 
-            using (NpgsqlCommand command = new NpgsqlCommand("get_documents", connection, this.transaction))
+            using (NpgsqlCommand command = new NpgsqlCommand("get_documents", _connection, _transaction))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
@@ -132,13 +132,13 @@ namespace PgDoc
 
         public DbTransaction StartTransaction(IsolationLevel isolationLevel)
         {
-            this.transaction = connection.BeginTransaction(isolationLevel);
-            return this.transaction;
+            _transaction = _connection.BeginTransaction(isolationLevel);
+            return _transaction;
         }
 
         public void Dispose()
         {
-            this.connection.Dispose();
+            _connection.Dispose();
         }
 
         private async Task<IReadOnlyList<T>> ExecuteQuery<T>(NpgsqlCommand command, Func<DbDataReader, T> readRecord)
