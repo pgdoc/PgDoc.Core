@@ -19,8 +19,6 @@ using System.Data.Common;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -50,17 +48,29 @@ namespace PgDoc
 
         public async Task<ByteString> UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
         {
-            IList<Tuple<Document, bool>> documents = updatedDocuments
-                .Select(item => Tuple.Create(item, false))
-                .Concat(checkedDocuments.Select(item => Tuple.Create(item, true))).ToList();
+            List<DocumentUpdate> documents = new List<DocumentUpdate>();
 
-            DocumentUpdate[] updates = documents.Select(item => new DocumentUpdate()
+            foreach (Document document in updatedDocuments)
             {
-                Id = item.Item1.Id,
-                Body = item.Item1.Body == null || item.Item2 ? null : JToken.Parse(item.Item1.Body).ToString(Formatting.None),
-                Version = item.Item1.Version.ToByteArray(),
-                CheckOnly = item.Item2
-            }).ToArray();
+                documents.Add(new DocumentUpdate()
+                {
+                    Id = document.Id,
+                    Body = document.Body,
+                    Version = document.Version.ToByteArray(),
+                    CheckOnly = false
+                });
+            }
+
+            foreach (Document document in checkedDocuments)
+            {
+                documents.Add(new DocumentUpdate()
+                {
+                    Id = document.Id,
+                    Body = null,
+                    Version = document.Version.ToByteArray(),
+                    CheckOnly = true
+                });
+            }
 
             byte[] newVersion = new byte[16];
             using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
@@ -72,7 +82,7 @@ namespace PgDoc
                 command.Parameters.Add(new NpgsqlParameter()
                 {
                     ParameterName = "@document_updates",
-                    Value = updates
+                    Value = documents
                 });
                 command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
@@ -85,13 +95,13 @@ namespace PgDoc
                 catch (PostgresException exception)
                 when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
                 {
-                    throw new UpdateConflictException(documents[0].Item1.Id, documents[0].Item1.Version);
+                    throw new UpdateConflictException(documents[0].Id, new ByteString(documents[0].Version));
                 }
                 catch (PostgresException exception)
                 when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
                 {
-                    Document conflict = documents.First(item => item.Item1.Id.Equals(Guid.Parse(exception.Detail))).Item1;
-                    throw new UpdateConflictException(conflict.Id, conflict.Version);
+                    DocumentUpdate conflict = documents.First(item => item.Id.Equals(Guid.Parse(exception.Detail)));
+                    throw new UpdateConflictException(conflict.Id, new ByteString(conflict.Version));
                 }
             }
         }
