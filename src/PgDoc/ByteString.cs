@@ -14,7 +14,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -26,8 +25,6 @@ namespace PgDoc
     /// </summary>
     public class ByteString : IEquatable<ByteString>
     {
-        private readonly byte[] _data;
-
         static ByteString()
         {
             Empty = new ByteString(new byte[0]);
@@ -39,8 +36,7 @@ namespace PgDoc
         /// <param name="data">An enumeration of bytes used to initialize the instance.</param>
         public ByteString(IEnumerable<byte> data)
         {
-            _data = data.ToArray();
-            Value = new ReadOnlyCollection<byte>(_data);
+            Value = new ReadOnlyMemory<byte>(data.ToArray());
         }
 
         /// <summary>
@@ -49,9 +45,8 @@ namespace PgDoc
         /// <param name="data">The byte array used to initialize the instance</param>
         public ByteString(byte[] data)
         {
-            _data = new byte[data.Length];
-            Buffer.BlockCopy(data, 0, _data, 0, data.Length);
-            Value = new ReadOnlyCollection<byte>(_data);
+            Span<byte> span = new Span<byte>(data);
+            Value = new ReadOnlyMemory<byte>(span.ToArray());
         }
 
         /// <summary>
@@ -60,9 +55,9 @@ namespace PgDoc
         public static ByteString Empty { get; }
 
         /// <summary>
-        /// Gets a read-only collection containing all the bytes in the <see cref="ByteString"/>.
+        /// Gets a read-only buffer containing all the bytes in the <see cref="ByteString"/>.
         /// </summary>
-        public IReadOnlyList<byte> Value { get; }
+        public ReadOnlyMemory<byte> Value { get; }
 
         /// <summary>
         /// Parses a <see cref="ByteString"/> from a hexadecimal string.
@@ -101,9 +96,7 @@ namespace PgDoc
         /// <returns>A byte array representing this <see cref="ByteString"/> instance.</returns>
         public byte[] ToByteArray()
         {
-            byte[] result = new byte[_data.Length];
-            Buffer.BlockCopy(_data, 0, result, 0, _data.Length);
-            return result;
+            return Value.Span.ToArray();
         }
 
         /// <summary>
@@ -112,7 +105,7 @@ namespace PgDoc
         /// <returns>A <see cref="Stream"/> representing this <see cref="ByteString"/> instance.</returns>
         public Stream ToStream()
         {
-            return new MemoryStream(_data, 0, _data.Length, false);
+            return new MemoryStream(Value.ToArray(), 0, Value.Length, false);
         }
 
         /// <summary>
@@ -128,11 +121,11 @@ namespace PgDoc
             }
             else
             {
-                if (_data.Length != other._data.Length)
+                if (Value.Length != other.Value.Length)
                     return false;
 
-                for (int i = 0; i < other._data.Length; i++)
-                    if (_data[i] != other._data[i])
+                for (int i = 0; i < other.Value.Length; i++)
+                    if (Value.Span[i] != other.Value.Span[i])
                         return false;
 
                 return true;
@@ -160,9 +153,9 @@ namespace PgDoc
         {
             unchecked
             {
-                int result = 0;
-                foreach (byte b in _data)
-                    result = (result * 31) ^ b;
+                int result = 113327;
+                for (int i = 0; i < Value.Length; i++)
+                    result = (result * 486187739) ^ Value.Span[i];
 
                 return result;
             }
@@ -174,10 +167,10 @@ namespace PgDoc
         /// <returns>The hexadecimal representation of the current object.</returns>
         public override string ToString()
         {
-            StringBuilder hex = new StringBuilder(_data.Length * 2);
+            StringBuilder hex = new StringBuilder(Value.Length * 2);
 
-            foreach (byte value in _data)
-                hex.AppendFormat("{0:x2}", value);
+            for (int i = 0; i < Value.Length; i++)
+                hex.AppendFormat("{0:x2}", Value.Span[i]);
 
             return hex.ToString();
         }

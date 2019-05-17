@@ -80,7 +80,7 @@ namespace PgDoc.Tests
             Document document = await _store.GetDocument(_ids[0]);
 
             AssertDocument(document, _ids[0], to, version);
-            Assert.Equal(16, version.Value.Count);
+            Assert.Equal(16, version.Value.Length);
         }
 
         [Theory]
@@ -96,7 +96,7 @@ namespace PgDoc.Tests
             Document document = await _store.GetDocument(_ids[0]);
 
             AssertDocument(document, _ids[0], to, version2);
-            Assert.Equal(16, version2.Value.Count);
+            Assert.Equal(16, version2.Value.Length);
             Assert.NotEqual(version1, version2);
         }
 
@@ -108,7 +108,7 @@ namespace PgDoc.Tests
             Document document = await _store.GetDocument(_ids[0]);
 
             AssertDocument(document, _ids[0], null, ByteString.Empty);
-            Assert.Equal(16, version.Value.Count);
+            Assert.Equal(16, version.Value.Length);
         }
 
         [Theory]
@@ -122,7 +122,7 @@ namespace PgDoc.Tests
             Document document = await _store.GetDocument(_ids[0]);
 
             AssertDocument(document, _ids[0], from, version1);
-            Assert.Equal(16, version2.Value.Count);
+            Assert.Equal(16, version2.Value.Length);
             Assert.NotEqual(version1, version2);
         }
 
@@ -137,7 +137,7 @@ namespace PgDoc.Tests
             Document document = await _store.GetDocument(_ids[0]);
 
             AssertDocument(document, _ids[0], to, version);
-            Assert.Equal(16, version.Value.Count);
+            Assert.Equal(16, version.Value.Length);
         }
 
         [Fact]

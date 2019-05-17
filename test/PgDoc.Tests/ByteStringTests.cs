@@ -27,8 +27,8 @@ namespace PgDoc.Tests
             ByteString result = new ByteString(sourceArray);
             sourceArray[4] = 1;
 
-            Assert.NotSame(sourceArray, result.Value);
-            Assert.Equal<byte>(new byte[] { 18, 178, 255, 70, 0 }, result.Value);
+            Assert.NotSame(sourceArray, result.Value.ToArray());
+            Assert.Equal<byte>(new byte[] { 18, 178, 255, 70, 0 }, result.Value.ToArray());
         }
 
         [Fact]
@@ -36,7 +36,7 @@ namespace PgDoc.Tests
         {
             ByteString result = ByteString.Parse("12b2FE460035789ACd");
 
-            Assert.Equal<byte>(new byte[] { 18, 178, 254, 70, 0, 53, 120, 154, 205 }, result.Value);
+            Assert.Equal<byte>(new byte[] { 18, 178, 254, 70, 0, 53, 120, 154, 205 }, result.Value.ToArray());
         }
 
         [Fact]
@@ -64,7 +64,7 @@ namespace PgDoc.Tests
         }
 
         [Fact]
-        public void ToArray_Success()
+        public void ToByteArray_Success()
         {
             byte[] sourceArray = new byte[] { 18, 178, 255, 70, 0 };
             ByteString result = new ByteString(sourceArray);
