@@ -13,9 +13,7 @@
 // limitations under the License.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace PgDoc
@@ -23,39 +21,24 @@ namespace PgDoc
     /// <summary>
     /// Represents an immutable string of binary data.
     /// </summary>
-    public class ByteString : IEquatable<ByteString>
+    public readonly struct ByteString : IEquatable<ByteString>
     {
-        static ByteString()
-        {
-            Empty = new ByteString(new byte[0]);
-        }
-
         /// <summary>
-        /// Initializes a new instance of the <see cref="ByteString"/> class from a collection of bytes.
+        /// Initializes a new instance of the <see cref="ByteString"/> structure from a buffer of bytes.
         /// </summary>
-        /// <param name="data">An enumeration of bytes used to initialize the instance.</param>
-        public ByteString(IEnumerable<byte> data)
+        /// <param name="data">The buffer of bytes used to initialize the instance.</param>
+        public ByteString(ReadOnlySpan<byte> data)
         {
             Value = new ReadOnlyMemory<byte>(data.ToArray());
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ByteString"/> class from a byte array.
-        /// </summary>
-        /// <param name="data">The byte array used to initialize the instance</param>
-        public ByteString(byte[] data)
-        {
-            Span<byte> span = new Span<byte>(data);
-            Value = new ReadOnlyMemory<byte>(span.ToArray());
-        }
-
-        /// <summary>
         /// Gets an empty <see cref="ByteString"/>.
         /// </summary>
-        public static ByteString Empty { get; }
+        public static ByteString Empty { get; } = new ByteString(Span<byte>.Empty);
 
         /// <summary>
-        /// Gets a read-only buffer containing all the bytes in the <see cref="ByteString"/>.
+        /// Gets a read-only buffer containing all the bytes in the current object.
         /// </summary>
         public ReadOnlyMemory<byte> Value { get; }
 
@@ -91,7 +74,7 @@ namespace PgDoc
         }
 
         /// <summary>
-        /// Returns a copy of the instance as an array.
+        /// Returns a copy of the current object as a byte array.
         /// </summary>
         /// <returns>A byte array representing this <see cref="ByteString"/> instance.</returns>
         public byte[] ToByteArray()
@@ -115,21 +98,7 @@ namespace PgDoc
         /// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
         public bool Equals(ByteString other)
         {
-            if (other == null)
-            {
-                return false;
-            }
-            else
-            {
-                if (Value.Length != other.Value.Length)
-                    return false;
-
-                for (int i = 0; i < other.Value.Length; i++)
-                    if (Value.Span[i] != other.Value.Span[i])
-                        return false;
-
-                return true;
-            }
+            return this == other;
         }
 
         /// <summary>
@@ -151,11 +120,13 @@ namespace PgDoc
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
+            ReadOnlySpan<byte> span = Value.Span;
+
             unchecked
             {
                 int result = 113327;
-                for (int i = 0; i < Value.Length; i++)
-                    result = (result * 486187739) ^ Value.Span[i];
+                for (int i = 0; i < span.Length; i++)
+                    result = (result * 486187739) ^ span[i];
 
                 return result;
             }
@@ -167,12 +138,42 @@ namespace PgDoc
         /// <returns>The hexadecimal representation of the current object.</returns>
         public override string ToString()
         {
-            StringBuilder hex = new StringBuilder(Value.Length * 2);
+            ReadOnlySpan<byte> span = Value.Span;
 
-            for (int i = 0; i < Value.Length; i++)
-                hex.AppendFormat("{0:x2}", Value.Span[i]);
+            StringBuilder hex = new StringBuilder(span.Length * 2);
+
+            for (int i = 0; i < span.Length; i++)
+                hex.AppendFormat("{0:x2}", span[i]);
 
             return hex.ToString();
+        }
+
+        /// <summary>
+        /// Indicates whether the values of two specified <see cref="ByteString"/> objects are equal.
+        /// </summary>
+        /// <returns>true if a and b are equal; otherwise, false.</returns>
+        public static bool operator ==(in ByteString a, in ByteString b)
+        {
+            ReadOnlySpan<byte> spanA = a.Value.Span;
+            ReadOnlySpan<byte> spanB = b.Value.Span;
+
+            if (spanA.Length != spanB.Length)
+                return false;
+
+            for (int i = 0; i < spanA.Length; i++)
+                if (spanA[i] != spanB[i])
+                    return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Indicates whether the values of two specified <see cref="ByteString"/> objects are not equal.
+        /// </summary>
+        /// <returns>true if a and b are not equal; otherwise, false.</returns>
+        public static bool operator !=(in ByteString left, in ByteString right)
+        {
+            return !(left == right);
         }
     }
 }

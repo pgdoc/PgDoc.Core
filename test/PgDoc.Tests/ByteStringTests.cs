@@ -32,6 +32,14 @@ namespace PgDoc.Tests
         }
 
         [Fact]
+        public void Constructor_Default()
+        {
+            Assert.Equal<byte>(new byte[0], default(ByteString).Value.ToArray());
+            Assert.Equal<byte>(new byte[0], new ByteString(null).Value.ToArray());
+            Assert.Equal<byte>(new byte[0], ByteString.Empty.Value.ToArray());
+        }
+
+        [Fact]
         public void Parse_Success()
         {
             ByteString result = ByteString.Parse("12b2FE460035789ACd");
@@ -100,15 +108,22 @@ namespace PgDoc.Tests
             Assert.Throws<NotSupportedException>(() => data.ToStream().WriteByte(1));
         }
 
-        [Fact]
-        public void Equals_Success()
+        [Theory]
+        [InlineData(new object[] { "abcd", "abcd", true })]
+        [InlineData(new object[] { "abcd", "abce", false })]
+        [InlineData(new object[] { "abcd", "abcdef", false })]
+        [InlineData(new object[] { "abcdef", "abcd", false })]
+        public void Equals_Success(string left, string right, bool equal)
         {
-            Assert.True(ByteString.Parse("abcd").Equals(ByteString.Parse("abcd")));
-            Assert.False(ByteString.Parse("abcd").Equals(ByteString.Parse("abce")));
-            Assert.False(ByteString.Parse("abcd").Equals(ByteString.Parse("abcdef")));
-            Assert.False(ByteString.Parse("abcdef").Equals(ByteString.Parse("abcd")));
-            Assert.False(ByteString.Parse("abcd").Equals(null));
+            Assert.Equal(equal, ByteString.Parse(left).Equals(ByteString.Parse(right)));
+            Assert.Equal(equal, ByteString.Parse(left) == ByteString.Parse(right));
+            Assert.Equal(!equal, ByteString.Parse(left) != ByteString.Parse(right));
+        }
 
+        [Fact]
+        public void Equals_ObjectComparison()
+        {
+            Assert.False(ByteString.Parse("abcd").Equals(null));
             Assert.True(ByteString.Parse("abcd").Equals((object)ByteString.Parse("abcd")));
             Assert.False(ByteString.Parse("abcd").Equals(4));
         }

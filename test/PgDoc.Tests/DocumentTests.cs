@@ -36,13 +36,6 @@ namespace PgDoc.Tests
         }
 
         [Fact]
-        public void Constructor_Exception()
-        {
-            Assert.Throws<ArgumentNullException>(
-                () => new Document(Guid.Parse(_guid), "{'abc':'def'}", null));
-        }
-
-        [Fact]
         public void Deconstruct_Success()
         {
             Document document = new Document(Guid.Parse(_guid), "{'abc':'def'}", ByteString.Parse("abcd"));

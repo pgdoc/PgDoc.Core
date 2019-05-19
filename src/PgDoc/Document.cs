@@ -22,7 +22,7 @@ namespace PgDoc
         {
             Id = id;
             Body = body;
-            Version = version ?? throw new ArgumentNullException(nameof(version));
+            Version = version;
         }
 
         /// <summary>

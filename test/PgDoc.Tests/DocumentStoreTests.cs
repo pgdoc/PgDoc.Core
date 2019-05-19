@@ -30,7 +30,7 @@ namespace PgDoc.Tests
         private const bool Update = false, Insert = true;
         private const bool ChangeBody = false, CheckVersion = true;
 
-        private static readonly ByteString _wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255));
+        private static readonly ByteString _wrongVersion = new ByteString(Enumerable.Range(0, 32).Select(i => (byte)255).ToArray());
         private static readonly Guid[] _ids =
             Enumerable.Range(0, 32).Select(index => new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray())).ToArray();
 
