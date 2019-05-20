@@ -13,7 +13,6 @@
 // limitations under the License.
 
 using System;
-using System.IO;
 using System.Text;
 
 namespace PgDoc
@@ -23,24 +22,28 @@ namespace PgDoc
     /// </summary>
     public readonly struct ByteString : IEquatable<ByteString>
     {
+        private static readonly byte[] _empty = new byte[0];
+
+        private readonly byte[]? _data;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ByteString"/> structure from a buffer of bytes.
         /// </summary>
         /// <param name="data">The buffer of bytes used to initialize the instance.</param>
         public ByteString(ReadOnlySpan<byte> data)
         {
-            Value = new ReadOnlyMemory<byte>(data.ToArray());
+            _data = data.ToArray();
         }
 
         /// <summary>
-        /// Gets an empty <see cref="ByteString"/>.
+        /// Gets an empty <see cref="ByteString"/> object.
         /// </summary>
         public static ByteString Empty { get; } = new ByteString(Span<byte>.Empty);
 
         /// <summary>
         /// Gets a read-only buffer containing all the bytes in the current object.
         /// </summary>
-        public ReadOnlyMemory<byte> Value { get; }
+        public ReadOnlySpan<byte> Value => new ReadOnlySpan<byte>(_data);
 
         /// <summary>
         /// Parses a <see cref="ByteString"/> from a hexadecimal string.
@@ -57,7 +60,7 @@ namespace PgDoc
 
             byte[] result = new byte[hexValue.Length >> 1];
 
-            for (int i = 0; i < (hexValue.Length >> 1); ++i)
+            for (int i = 0; i < result.Length; ++i)
                 result[i] = (byte)((GetHexValue(hexValue[i << 1]) << 4) + (GetHexValue(hexValue[(i << 1) + 1])));
 
             return new ByteString(result);
@@ -65,12 +68,15 @@ namespace PgDoc
 
         private static int GetHexValue(char hex)
         {
-            int value = "0123456789ABCDEF".IndexOf(char.ToUpper(hex));
-
-            if (value < 0)
-                throw new FormatException(string.Format("The character '{0}' is not a hexadecimal digit.", hex));
+            int value = (int)hex;
+            if (value >= '0' && value <= '9')
+                return value - '0';
+            else if (value >= 'a' && value <= 'f')
+                return value - 'a' + 10;
+            else if (value >= 'A' && value <= 'F')
+                return value - 'A' + 10;
             else
-                return value;
+                throw new FormatException(string.Format("The character '{0}' is not a hexadecimal digit.", hex));
         }
 
         /// <summary>
@@ -79,16 +85,22 @@ namespace PgDoc
         /// <returns>A byte array representing this <see cref="ByteString"/> instance.</returns>
         public byte[] ToByteArray()
         {
-            return Value.Span.ToArray();
+            return Value.ToArray();
         }
 
         /// <summary>
-        /// Returns a read-only stream containing the data represented by the current object.
+        /// Returns the hexadecimal representation of the current object.
         /// </summary>
-        /// <returns>A <see cref="Stream"/> representing this <see cref="ByteString"/> instance.</returns>
-        public Stream ToStream()
+        /// <returns>The hexadecimal representation of the current object.</returns>
+        public override string ToString()
         {
-            return new MemoryStream(Value.ToArray(), 0, Value.Length, false);
+            byte[] data = _data ?? _empty;
+            StringBuilder hex = new StringBuilder(data.Length * 2);
+
+            for (int i = 0; i < data.Length; i++)
+                hex.AppendFormat("{0:x2}", data[i]);
+
+            return hex.ToString();
         }
 
         /// <summary>
@@ -120,48 +132,31 @@ namespace PgDoc
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
-            ReadOnlySpan<byte> span = Value.Span;
-
+            byte[] data = _data ?? _empty;
             unchecked
             {
                 int result = 113327;
-                for (int i = 0; i < span.Length; i++)
-                    result = (result * 486187739) ^ span[i];
+                for (int i = 0; i < data.Length; i++)
+                    result = (result * 486187739) ^ data[i];
 
                 return result;
             }
         }
 
         /// <summary>
-        /// Returns the hexadecimal representation of the current object.
-        /// </summary>
-        /// <returns>The hexadecimal representation of the current object.</returns>
-        public override string ToString()
-        {
-            ReadOnlySpan<byte> span = Value.Span;
-
-            StringBuilder hex = new StringBuilder(span.Length * 2);
-
-            for (int i = 0; i < span.Length; i++)
-                hex.AppendFormat("{0:x2}", span[i]);
-
-            return hex.ToString();
-        }
-
-        /// <summary>
         /// Indicates whether the values of two specified <see cref="ByteString"/> objects are equal.
         /// </summary>
         /// <returns>true if a and b are equal; otherwise, false.</returns>
-        public static bool operator ==(in ByteString a, in ByteString b)
+        public static bool operator ==(ByteString a, ByteString b)
         {
-            ReadOnlySpan<byte> spanA = a.Value.Span;
-            ReadOnlySpan<byte> spanB = b.Value.Span;
+            byte[] dataA = a._data ?? _empty;
+            byte[] dataB = b._data ?? _empty;
 
-            if (spanA.Length != spanB.Length)
+            if (dataA.Length != dataB.Length)
                 return false;
 
-            for (int i = 0; i < spanA.Length; i++)
-                if (spanA[i] != spanB[i])
+            for (int i = 0; i < dataA.Length; i++)
+                if (dataA[i] != dataB[i])
                     return false;
 
             return true;
@@ -171,7 +166,7 @@ namespace PgDoc
         /// Indicates whether the values of two specified <see cref="ByteString"/> objects are not equal.
         /// </summary>
         /// <returns>true if a and b are not equal; otherwise, false.</returns>
-        public static bool operator !=(in ByteString left, in ByteString right)
+        public static bool operator !=(ByteString left, ByteString right)
         {
             return !(left == right);
         }

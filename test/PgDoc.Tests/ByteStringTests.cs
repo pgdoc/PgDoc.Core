@@ -13,7 +13,7 @@
 // limitations under the License.
 
 using System;
-using System.IO;
+using System.Collections.Generic;
 using Xunit;
 
 namespace PgDoc.Tests
@@ -81,6 +81,12 @@ namespace PgDoc.Tests
         }
 
         [Fact]
+        public void ToByteArray_Default()
+        {
+            Assert.Equal<byte>(new byte[0], default(ByteString).ToByteArray());
+        }
+
+        [Fact]
         public void ToString_Success()
         {
             string result = new ByteString(new byte[] { 18, 178, 255, 70, 0 }).ToString();
@@ -89,36 +95,31 @@ namespace PgDoc.Tests
         }
 
         [Fact]
-        public void ToStream_Success()
+        public void ToString_Default()
         {
-            ByteString data = ByteString.Parse("abcdef");
+            string result = default(ByteString).ToString();
 
-            byte[] result = new BinaryReader(data.ToStream()).ReadBytes(3);
-
-            Assert.Equal(3, data.ToStream().Length);
-            Assert.Equal(data, new ByteString(result));
-            Assert.False(data.ToStream().CanWrite);
-        }
-
-        [Fact]
-        public void ToStream_Immutable()
-        {
-            ByteString data = ByteString.Parse("abcdef");
-
-            Assert.Throws<NotSupportedException>(() => data.ToStream().WriteByte(1));
+            Assert.Equal("", result);
         }
 
         [Theory]
-        [InlineData(new object[] { "abcd", "abcd", true })]
-        [InlineData(new object[] { "abcd", "abce", false })]
-        [InlineData(new object[] { "abcd", "abcdef", false })]
-        [InlineData(new object[] { "abcdef", "abcd", false })]
-        public void Equals_Success(string left, string right, bool equal)
+        [MemberData(nameof(EqualsData))]
+        public void Equals_Success(bool equal, ByteString left, ByteString right)
         {
-            Assert.Equal(equal, ByteString.Parse(left).Equals(ByteString.Parse(right)));
-            Assert.Equal(equal, ByteString.Parse(left) == ByteString.Parse(right));
-            Assert.Equal(!equal, ByteString.Parse(left) != ByteString.Parse(right));
+            Assert.Equal(equal, left.Equals(right));
+            Assert.Equal(equal, left == right);
+            Assert.Equal(!equal, left != right);
         }
+
+        public static IEnumerable<object[]> EqualsData => new List<object[]>()
+        {
+            new object[] { true, ByteString.Parse("abcd"), ByteString.Parse("abcd") },
+            new object[] { false, ByteString.Parse("abcd"), ByteString.Parse("abce") },
+            new object[] { false, ByteString.Parse("abcd"), ByteString.Parse("abcdef") },
+            new object[] { false, ByteString.Parse("abcdef"), ByteString.Parse("abcd") },
+            new object[] { true, ByteString.Empty, default(ByteString) },
+            new object[] { true, default(ByteString), ByteString.Empty }
+        };
 
         [Fact]
         public void Equals_ObjectComparison()
@@ -137,6 +138,14 @@ namespace PgDoc.Tests
 
             Assert.Equal(value1.GetHashCode(), value3.GetHashCode());
             Assert.NotEqual(value1.GetHashCode(), value2.GetHashCode());
+        }
+
+        [Fact]
+        public void GetHashCode_Default()
+        {
+            int result = default(ByteString).GetHashCode();
+
+            Assert.Equal(ByteString.Empty.GetHashCode(), result);
         }
     }
 }
