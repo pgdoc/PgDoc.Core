@@ -22,8 +22,6 @@ namespace PgDoc
     /// </summary>
     public readonly struct ByteString : IEquatable<ByteString>
     {
-        private static readonly byte[] _empty = new byte[0];
-
         private readonly byte[]? _data;
 
         /// <summary>
@@ -94,11 +92,16 @@ namespace PgDoc
         /// <returns>The hexadecimal representation of the current object.</returns>
         public override string ToString()
         {
-            byte[] data = _data ?? _empty;
-            StringBuilder hex = new StringBuilder(data.Length * 2);
+            const string hexValues = "0123456789abcdef";
+
+            byte[] data = _data ?? Array.Empty<byte>();
+            StringBuilder hex = new StringBuilder(data.Length << 1);
 
             for (int i = 0; i < data.Length; i++)
-                hex.AppendFormat("{0:x2}", data[i]);
+            {
+                hex.Append(hexValues[data[i] >> 4]);
+                hex.Append(hexValues[data[i] & 0xF]);
+            }
 
             return hex.ToString();
         }
@@ -132,7 +135,7 @@ namespace PgDoc
         /// <returns>A hash code for the current object.</returns>
         public override int GetHashCode()
         {
-            byte[] data = _data ?? _empty;
+            byte[] data = _data ?? Array.Empty<byte>();
             unchecked
             {
                 int result = 113327;
@@ -149,8 +152,8 @@ namespace PgDoc
         /// <returns>true if a and b are equal; otherwise, false.</returns>
         public static bool operator ==(ByteString a, ByteString b)
         {
-            byte[] dataA = a._data ?? _empty;
-            byte[] dataB = b._data ?? _empty;
+            byte[] dataA = a._data ?? Array.Empty<byte>();
+            byte[] dataB = b._data ?? Array.Empty<byte>();
 
             if (dataA.Length != dataB.Length)
                 return false;
