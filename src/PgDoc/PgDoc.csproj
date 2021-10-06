@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>1.1.2</VersionPrefix>
+    <VersionPrefix>1.2.0</VersionPrefix>
     <Title>PgDoc</Title>
     <Description>PgDoc is a library for using PostgreSQL as a JSON document store.</Description>
     <Authors>Flavien Charlon</Authors>
@@ -12,13 +12,14 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <NullableContextOptions>enable</NullableContextOptions>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="npgsql" Version="4.0.6" />
-    <PackageReference Include="System.Memory" Version="4.5.2" />
+    <PackageReference Include="npgsql" Version="5.0.10" />
+    <PackageReference Include="System.Memory" Version="4.5.4" />
   </ItemGroup>
 
 </Project>

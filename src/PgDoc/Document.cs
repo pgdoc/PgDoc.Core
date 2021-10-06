@@ -16,6 +16,9 @@ using System;
 
 namespace PgDoc
 {
+    /// <summary>
+    /// Represents a document comprised of a unique ID, a JSON body and a version.
+    /// </summary>
     public class Document
     {
         public Document(Guid id, string? body, ByteString version)
@@ -40,6 +43,9 @@ namespace PgDoc
         /// </summary>
         public ByteString Version { get; }
 
+        /// <summary>
+        /// Deconstructs the ID, body and version of the <see cref="JsonEntity{T}"/> object.
+        /// </summary>
         public void Deconstruct(out Guid id, out string? body, out ByteString version)
         {
             id = Id;

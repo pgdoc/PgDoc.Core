@@ -18,14 +18,13 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 using Xunit;
 
 namespace PgDoc.Tests
 {
-    public class DocumentStoreTests : IDisposable
+    public class SqlDocumentStoreTests : IDisposable
     {
         private const bool Update = false, Insert = true;
         private const bool ChangeBody = false, CheckVersion = true;
@@ -34,13 +33,13 @@ namespace PgDoc.Tests
         private static readonly Guid[] _ids =
             Enumerable.Range(0, 32).Select(index => new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray())).ToArray();
 
-        private readonly DocumentStore _store;
+        private readonly SqlDocumentStore _store;
 
-        public DocumentStoreTests()
+        public SqlDocumentStoreTests()
         {
             NpgsqlConnection connection = new NpgsqlConnection(ConfigurationManager.GetSetting("connection_string"));
 
-            _store = new DocumentStore(connection);
+            _store = new SqlDocumentStore(connection);
             _store.Initialize().Wait();
 
             NpgsqlCommand command = connection.CreateCommand();
@@ -54,7 +53,7 @@ namespace PgDoc.Tests
         public void Constructor_Exception()
         {
             Assert.Throws<ArgumentNullException>(
-                () => new DocumentStore(null));
+                () => new SqlDocumentStore(null));
         }
 
         #endregion
@@ -209,8 +208,8 @@ namespace PgDoc.Tests
         [Fact]
         public async Task UpdateDocuments_MultipleDocumentsSuccess()
         {
-            ByteString version1 = await _store.UpdateDocument(_ids[0], "{\"abc\":\"def\"}", ByteString.Empty);
-            ByteString version2 = await _store.UpdateDocument(_ids[1], "{\"ghi\":\"jkl\"}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument(_ids[0], "{\"abc\":\"def\"}", ByteString.Empty);
+            ByteString version2 = await UpdateDocument(_ids[1], "{\"ghi\":\"jkl\"}", ByteString.Empty);
 
             ByteString version3 = await _store.UpdateDocuments(
                 new Document[]
@@ -240,7 +239,7 @@ namespace PgDoc.Tests
         [InlineData(ChangeBody)]
         public async Task UpdateDocuments_MultipleDocumentsConflict(bool checkOnly)
         {
-            ByteString version1 = await _store.UpdateDocument(_ids[0], "{\"abc\":\"def\"}", ByteString.Empty);
+            ByteString version1 = await UpdateDocument(_ids[0], "{\"abc\":\"def\"}", ByteString.Empty);
 
             UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(async delegate ()
             {
@@ -311,7 +310,7 @@ namespace PgDoc.Tests
 
             using (_store.StartTransaction(IsolationLevel.ReadCommitted))
             {
-                await _store.UpdateDocument(_ids[1], "{\"ghi\":\"jkl\"}", ByteString.Empty);
+                await UpdateDocument(_ids[1], "{\"ghi\":\"jkl\"}", ByteString.Empty);
 
                 UpdateConflictException exception = await Assert.ThrowsAsync<UpdateConflictException>(() =>
                     UpdateDocument("{\"mno\":\"pqr\"}", _wrongVersion));
@@ -338,8 +337,8 @@ namespace PgDoc.Tests
             ByteString transactionVersion;
             UpdateConflictException exception;
 
-            DocumentStore connection1 = await CreateDocumentStore();
-            DocumentStore connection2 = await CreateDocumentStore();
+            SqlDocumentStore connection1 = await CreateDocumentStore();
+            SqlDocumentStore connection2 = await CreateDocumentStore();
             using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.RepeatableRead))
             {
                 // Start transaction 1
@@ -373,8 +372,8 @@ namespace PgDoc.Tests
             Task<ByteString> update1;
             Task<ByteString> update2;
 
-            DocumentStore connection1 = await CreateDocumentStore();
-            DocumentStore connection2 = await CreateDocumentStore();
+            SqlDocumentStore connection1 = await CreateDocumentStore();
+            SqlDocumentStore connection2 = await CreateDocumentStore();
             using (DbTransaction transaction1 = connection1.StartTransaction(IsolationLevel.ReadCommitted))
             using (DbTransaction transaction2 = connection2.StartTransaction(IsolationLevel.ReadCommitted))
             {
@@ -431,8 +430,8 @@ namespace PgDoc.Tests
             ByteString updatedVersion;
             PostgresException exception;
 
-            DocumentStore connection1 = await CreateDocumentStore(shortTimeout: true);
-            DocumentStore connection2 = await CreateDocumentStore(shortTimeout: true);
+            SqlDocumentStore connection1 = await CreateDocumentStore(shortTimeout: true);
+            SqlDocumentStore connection2 = await CreateDocumentStore(shortTimeout: true);
             using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.ReadCommitted))
             {
                 // Lock the document with transaction 1
@@ -465,8 +464,8 @@ namespace PgDoc.Tests
         {
             ByteString initialVersion = await UpdateDocument("{\"abc\":\"def\"}", ByteString.Empty);
 
-            DocumentStore connection1 = await CreateDocumentStore();
-            DocumentStore connection2 = await CreateDocumentStore();
+            SqlDocumentStore connection1 = await CreateDocumentStore();
+            SqlDocumentStore connection2 = await CreateDocumentStore();
             using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.ReadCommitted))
             {
                 // Lock the document for read with transaction 1
@@ -492,11 +491,11 @@ namespace PgDoc.Tests
 
         #region Helper Methods
 
-        private static async Task<DocumentStore> CreateDocumentStore(bool shortTimeout = false)
+        private static async Task<SqlDocumentStore> CreateDocumentStore(bool shortTimeout = false)
         {
             NpgsqlConnection connection = new NpgsqlConnection(ConfigurationManager.GetSetting("connection_string"));
 
-            DocumentStore engine = new DocumentStore(connection);
+            SqlDocumentStore engine = new SqlDocumentStore(connection);
             await engine.Initialize();
 
             if (shortTimeout)
@@ -509,15 +508,20 @@ namespace PgDoc.Tests
             return engine;
         }
 
-        private async Task<ByteString> UpdateDocument(string body, ByteString version, DocumentStore store = null)
+        private async Task<ByteString> UpdateDocument(Guid id, string body, ByteString version)
+        {
+            return await _store.UpdateDocuments(new Document(id, body, version));
+        }
+
+        private async Task<ByteString> UpdateDocument(string body, ByteString version, SqlDocumentStore store = null)
         {
             if (store == null)
                 store = _store;
 
-            return await store.UpdateDocument(_ids[0], body, version);
+            return await store.UpdateDocuments(new Document(_ids[0], body, version));
         }
 
-        private async Task<ByteString> CheckDocument(ByteString version, DocumentStore store = null)
+        private async Task<ByteString> CheckDocument(ByteString version, SqlDocumentStore store = null)
         {
             if (store == null)
                 store = _store;

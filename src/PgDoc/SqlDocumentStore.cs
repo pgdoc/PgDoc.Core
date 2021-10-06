@@ -24,7 +24,10 @@ using NpgsqlTypes;
 
 namespace PgDoc
 {
-    public class DocumentStore : IDocumentStore
+    /// <summary>
+    /// Represents an implementation of the <see cref="IDocumentStore" /> interface that relies on PosgreSQL for persistence.
+    /// </summary>
+    public class SqlDocumentStore : IDocumentStore
     {
         private const string SerializationFailureSqlState = "40001";
         private const string DeadlockDetectedSqlState = "40P01";
@@ -32,7 +35,7 @@ namespace PgDoc
         private readonly NpgsqlConnection _connection;
         private NpgsqlTransaction? _transaction = null;
 
-        public DocumentStore(NpgsqlConnection connection)
+        public SqlDocumentStore(NpgsqlConnection connection)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         }
