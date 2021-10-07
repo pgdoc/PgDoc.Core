@@ -123,8 +123,8 @@ namespace PgDoc
         /// <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
         public override bool Equals(object obj)
         {
-            if (obj is ByteString)
-                return Equals((ByteString)obj);
+            if (obj is ByteString byteString)
+                return Equals(byteString);
             else
                 return false;
         }

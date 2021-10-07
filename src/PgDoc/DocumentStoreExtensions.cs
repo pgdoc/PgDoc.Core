@@ -22,6 +22,8 @@ namespace PgDoc
         /// <summary>
         /// Updates atomically the body of multiple documents.
         /// </summary>
+        /// <exception cref="UpdateConflictException">Thrown when an attempt to modify a document is made using the
+        /// wrong base version.</exception>
         public static Task<ByteString> UpdateDocuments(this IDocumentStore documentStore, params Document[] objects)
         {
             return documentStore.UpdateDocuments(objects, new Document[0]);

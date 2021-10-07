@@ -17,7 +17,7 @@ using System;
 namespace PgDoc
 {
     /// <summary>
-    /// Represents an error caused by the attempt of modifying a record using the wrong base version.
+    /// Represents an error that occurs when an attempt to modify a document is made using the wrong base version.
     /// </summary>
     public class UpdateConflictException : Exception
     {

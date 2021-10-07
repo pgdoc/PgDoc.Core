@@ -44,7 +44,7 @@ namespace PgDoc
         public ByteString Version { get; }
 
         /// <summary>
-        /// Deconstructs the ID, body and version of the <see cref="JsonEntity{T}"/> object.
+        /// Deconstructs the ID, body and version of the <see cref="Document"/> object.
         /// </summary>
         public void Deconstruct(out Guid id, out string? body, out ByteString version)
         {

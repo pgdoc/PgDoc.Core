@@ -25,7 +25,8 @@ using NpgsqlTypes;
 namespace PgDoc
 {
     /// <summary>
-    /// Represents an implementation of the <see cref="IDocumentStore" /> interface that relies on PosgreSQL for persistence.
+    /// Represents an implementation of the <see cref="IDocumentStore" /> interface that relies on PosgreSQL for
+    /// persistence.
     /// </summary>
     public class SqlDocumentStore : IDocumentStore
     {
@@ -79,33 +80,32 @@ namespace PgDoc
             using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
                 rng.GetBytes(newVersion);
 
-            using (NpgsqlCommand command = new NpgsqlCommand("update_documents", _connection, _transaction))
+            using NpgsqlCommand command = new NpgsqlCommand("update_documents", _connection, _transaction);
+
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.Add(new NpgsqlParameter()
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.Add(new NpgsqlParameter()
-                {
-                    ParameterName = "@document_updates",
-                    Value = documents
-                });
-                command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
+                ParameterName = "@document_updates",
+                Value = documents
+            });
+            command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
-                try
-                {
-                    await ExecuteQuery(command, reader => 0);
+            try
+            {
+                await ExecuteQuery(command, reader => 0);
 
-                    return new ByteString(newVersion);
-                }
-                catch (PostgresException exception)
-                when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
-                {
-                    throw new UpdateConflictException(documents[0].Id, new ByteString(documents[0].Version));
-                }
-                catch (PostgresException exception)
-                when (exception.MessageText == "check_violation" && exception.Hint == "update_documents_conflict")
-                {
-                    DocumentUpdate conflict = documents.First(item => item.Id.Equals(Guid.Parse(exception.Detail)));
-                    throw new UpdateConflictException(conflict.Id, new ByteString(conflict.Version));
-                }
+                return new ByteString(newVersion);
+            }
+            catch (PostgresException exception)
+            when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
+            {
+                throw new UpdateConflictException(documents[0].Id, new ByteString(documents[0].Version));
+            }
+            catch (PostgresException exception)
+            when (exception.MessageText == "update_documents_conflict")
+            {
+                DocumentUpdate conflict = documents.First(item => item.Id.Equals(Guid.Parse(exception.Hint)));
+                throw new UpdateConflictException(conflict.Id, new ByteString(conflict.Version));
             }
         }
 
@@ -116,31 +116,30 @@ namespace PgDoc
             if (idList.Count == 0)
                 return new Document[0];
 
-            using (NpgsqlCommand command = new NpgsqlCommand("get_documents", _connection, _transaction))
+            using NpgsqlCommand command = new NpgsqlCommand("get_documents", _connection, _transaction);
+
+            command.CommandType = CommandType.StoredProcedure;
+            command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
+
+            IReadOnlyList<Document> queryResult = await ExecuteQuery(
+                command,
+                reader => new Document(
+                    (Guid)reader["id"],
+                    reader["body"] is DBNull ? null : (string)reader["body"],
+                    new ByteString((byte[])reader["version"])));
+
+            Dictionary<Guid, Document> documents = queryResult.ToDictionary(document => document.Id);
+
+            List<Document> result = new List<Document>(idList.Count);
+            foreach (Guid id in idList)
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
-
-                IReadOnlyList<Document> queryResult = await ExecuteQuery(
-                    command,
-                    reader => new Document(
-                        (Guid)reader["id"],
-                        reader["body"] is DBNull ? null : (string)reader["body"],
-                        new ByteString((byte[])reader["version"])));
-
-                Dictionary<Guid, Document> documents = queryResult.ToDictionary(document => document.Id);
-
-                List<Document> result = new List<Document>(idList.Count);
-                foreach (Guid id in idList)
-                {
-                    if (documents.TryGetValue(id, out Document document))
-                        result.Add(document);
-                    else
-                        result.Add(new Document(id, null, ByteString.Empty));
-                }
-
-                return result.AsReadOnly();
+                if (documents.TryGetValue(id, out Document document))
+                    result.Add(document);
+                else
+                    result.Add(new Document(id, null, ByteString.Empty));
             }
+
+            return result.AsReadOnly();
         }
 
         public DbTransaction StartTransaction(IsolationLevel isolationLevel)
@@ -167,7 +166,7 @@ namespace PgDoc
             return result.AsReadOnly();
         }
 
-        private class DocumentUpdate
+        private sealed class DocumentUpdate
         {
             public Guid Id { get; set; }
 

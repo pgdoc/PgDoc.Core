@@ -62,7 +62,7 @@ BEGIN
     WHERE old_version <> new_version;
 
     IF conflict_id IS NOT NULL THEN
-      RAISE EXCEPTION 'check_violation' USING HINT = 'update_documents_conflict', DETAIL = conflict_id::text;
+      RAISE EXCEPTION 'update_documents_conflict' USING HINT = conflict_id::text;
     END IF;
 
     -- Update existing documents
