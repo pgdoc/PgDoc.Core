@@ -20,7 +20,7 @@ CREATE TABLE document
 (
     id      uuid PRIMARY KEY,
     body    jsonb,
-    version bytea NOT NULL
+    version bigint NOT NULL
 );
 
 -- ======================================================================
@@ -31,11 +31,11 @@ CREATE TYPE document_update AS
 (
     id uuid,
     body jsonb,
-    version bytea,
+    version bigint,
     check_only boolean
 );
 
-CREATE OR REPLACE FUNCTION update_documents(document_updates document_update[], version bytea)
+CREATE OR REPLACE FUNCTION update_documents(document_updates document_update[])
 RETURNS VOID AS $$ #variable_conflict use_variable
 DECLARE
     conflict_id uuid;
@@ -44,7 +44,7 @@ BEGIN
     -- Insert the new documents
 
     INSERT INTO document (id, body, version)
-    SELECT document_update.id, NULL, E'\\x'
+    SELECT document_update.id, NULL, 0
     FROM UNNEST(document_updates) AS document_update
     ON CONFLICT (id) DO NOTHING;
 
@@ -69,7 +69,7 @@ BEGIN
 
     UPDATE document
     SET body = document_update.body,
-        version = version
+        version = document_update.version + 1
     FROM UNNEST(document_updates) AS document_update
     WHERE document.id = document_update.id AND NOT document_update.check_only;
 
@@ -81,7 +81,7 @@ SECURITY DEFINER;
 -- ======================================================================
 
 CREATE OR REPLACE FUNCTION get_documents(ids uuid[])
-RETURNS TABLE (id uuid, body jsonb, version bytea) AS $$
+RETURNS TABLE (id uuid, body jsonb, version bigint) AS $$
 BEGIN
 
     RETURN QUERY

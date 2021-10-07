@@ -50,7 +50,7 @@ namespace PgDoc
             }
         }
 
-        public async Task<ByteString> UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
+        public async Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
         {
             List<DocumentUpdate> documents = new List<DocumentUpdate>();
 
@@ -60,7 +60,7 @@ namespace PgDoc
                 {
                     Id = document.Id,
                     Body = document.Body,
-                    Version = document.Version.ToByteArray(),
+                    Version = document.Version,
                     CheckOnly = false
                 });
             }
@@ -71,14 +71,10 @@ namespace PgDoc
                 {
                     Id = document.Id,
                     Body = null,
-                    Version = document.Version.ToByteArray(),
+                    Version = document.Version,
                     CheckOnly = true
                 });
             }
-
-            byte[] newVersion = new byte[16];
-            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
-                rng.GetBytes(newVersion);
 
             using NpgsqlCommand command = new NpgsqlCommand("update_documents", _connection, _transaction);
 
@@ -88,24 +84,21 @@ namespace PgDoc
                 ParameterName = "@document_updates",
                 Value = documents
             });
-            command.Parameters.Add(new NpgsqlParameter("@version", newVersion));
 
             try
             {
                 await ExecuteQuery(command, reader => 0);
-
-                return new ByteString(newVersion);
             }
             catch (PostgresException exception)
             when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
             {
-                throw new UpdateConflictException(documents[0].Id, new ByteString(documents[0].Version));
+                throw new UpdateConflictException(documents[0].Id, documents[0].Version);
             }
             catch (PostgresException exception)
             when (exception.MessageText == "update_documents_conflict")
             {
                 DocumentUpdate conflict = documents.First(item => item.Id.Equals(Guid.Parse(exception.Hint)));
-                throw new UpdateConflictException(conflict.Id, new ByteString(conflict.Version));
+                throw new UpdateConflictException(conflict.Id, conflict.Version);
             }
         }
 
@@ -126,7 +119,7 @@ namespace PgDoc
                 reader => new Document(
                     (Guid)reader["id"],
                     reader["body"] is DBNull ? null : (string)reader["body"],
-                    new ByteString((byte[])reader["version"])));
+                    (long)reader["version"]));
 
             Dictionary<Guid, Document> documents = queryResult.ToDictionary(document => document.Id);
 
@@ -136,7 +129,7 @@ namespace PgDoc
                 if (documents.TryGetValue(id, out Document document))
                     result.Add(document);
                 else
-                    result.Add(new Document(id, null, ByteString.Empty));
+                    result.Add(new Document(id, null, 0));
             }
 
             return result.AsReadOnly();
@@ -172,7 +165,7 @@ namespace PgDoc
 
             public string? Body { get; set; }
 
-            public byte[] Version { get; set; } = new byte[0];
+            public long Version { get; set; }
 
             public bool CheckOnly { get; set; }
         }

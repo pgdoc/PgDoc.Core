@@ -17,15 +17,14 @@ using System;
 namespace PgDoc
 {
     /// <summary>
-    /// Represents an error that occurs when an attempt to modify a document is made using the wrong base version.
+    /// Represents an error that occurs when attempting to modify a document using the wrong base version.
     /// </summary>
     public class UpdateConflictException : Exception
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="ConcurrentMutationException"/> class.
+        /// Initializes a new instance of the <see cref="UpdateConflictException"/> class.
         /// </summary>
-        /// <param name="failedUpdate">The failed record mutation.</param>
-        public UpdateConflictException(Guid id, ByteString version)
+        public UpdateConflictException(Guid id, long version)
             : base($"The object '{id}' has been modified.")
         {
             Id = id;
@@ -37,6 +36,6 @@ namespace PgDoc
         /// </summary>
         public Guid Id { get; }
 
-        public ByteString Version { get; }
+        public long Version { get; }
     }
 }

@@ -17,11 +17,11 @@ using System;
 namespace PgDoc
 {
     /// <summary>
-    /// Represents a document comprised of a unique ID, a JSON body and a version.
+    /// Represents a document composed of a unique ID, a JSON body and a version number.
     /// </summary>
     public class Document
     {
-        public Document(Guid id, string? body, ByteString version)
+        public Document(Guid id, string? body, long version)
         {
             Id = id;
             Body = body;
@@ -41,12 +41,12 @@ namespace PgDoc
         /// <summary>
         /// Gets the current version of the document.
         /// </summary>
-        public ByteString Version { get; }
+        public long Version { get; }
 
         /// <summary>
-        /// Deconstructs the ID, body and version of the <see cref="Document"/> object.
+        /// Deconstructs the ID, body and version of this <see cref="Document"/> object.
         /// </summary>
-        public void Deconstruct(out Guid id, out string? body, out ByteString version)
+        public void Deconstruct(out Guid id, out string? body, out long version)
         {
             id = Id;
             body = Body;

@@ -24,27 +24,27 @@ namespace PgDoc.Tests
         [Fact]
         public void Constructor_Success()
         {
-            Document document1 = new Document(Guid.Parse(_guid), "{'abc':'def'}", ByteString.Parse("abcd"));
-            Document document2 = new Document(Guid.Parse(_guid), null, ByteString.Parse("abcd"));
+            Document document1 = new Document(Guid.Parse(_guid), "{'abc':'def'}", 1);
+            Document document2 = new Document(Guid.Parse(_guid), null, long.MaxValue);
 
             Assert.Equal(Guid.Parse(_guid), document1.Id);
             Assert.Equal("{'abc':'def'}", document1.Body);
-            Assert.Equal(ByteString.Parse("abcd"), document1.Version);
+            Assert.Equal(1, document1.Version);
             Assert.Equal(Guid.Parse(_guid), document2.Id);
             Assert.Null(document2.Body);
-            Assert.Equal(ByteString.Parse("abcd"), document2.Version);
+            Assert.Equal(long.MaxValue, document2.Version);
         }
 
         [Fact]
         public void Deconstruct_Success()
         {
-            Document document = new Document(Guid.Parse(_guid), "{'abc':'def'}", ByteString.Parse("abcd"));
+            Document document = new Document(Guid.Parse(_guid), "{'abc':'def'}", 1);
 
-            (Guid id, string body, ByteString version) = document;
+            (Guid id, string body, long version) = document;
 
             Assert.Equal(Guid.Parse(_guid), id);
             Assert.Equal("{'abc':'def'}", body);
-            Assert.Equal(ByteString.Parse("abcd"), version);
+            Assert.Equal(1, version);
         }
     }
 }

@@ -35,9 +35,9 @@ namespace PgDoc
         /// <param name="updatedDocuments">The documents being updated.</param>
         /// <param name="checkedDocuments">The documents whose versions are checked, but which are not updated.</param>
         /// <returns>The task object representing the asynchronous operation.</returns>
-        /// <exception cref="UpdateConflictException">Thrown when an attempt to modify a document is made using the
-        /// wrong base version.</exception>
-        Task<ByteString> UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments);
+        /// <exception cref="UpdateConflictException">Thrown when attempting to modify a document using the wrong
+        /// base version.</exception>
+        Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments);
 
         /// <summary>
         /// Retrieves multiple documents given their IDs.
