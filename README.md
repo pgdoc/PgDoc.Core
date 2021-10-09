@@ -32,7 +32,7 @@ public class Document
     /// <summary>
     /// Gets the current version of the document.
     /// </summary>
-    public ByteString Version { get; }
+    public long Version { get; }
 }
 ```
 
@@ -85,7 +85,7 @@ It is also possible to atomically update several documents at once by passing mu
 
 PgDoc has no concept of inserting or deleting. They are both treated as an update.
 
-Creating a new document is equivalent to updating a document from a null body to a non-null body. The initial value of the `Version` property of a document that has never been created is always `ByteString.Empty`.
+Creating a new document is equivalent to updating a document from a null body to a non-null body. The initial value of the `Version` property of a document that has never been created is always `0`.
 
 ```csharp
 // Generate a random ID for the new document
@@ -95,7 +95,7 @@ Guid documentId = Guid.NewGuid();
 Document newDocument = new Document(
     id: documentId,
     body: "{'key':'inital_value'}",
-    version: ByteString.Empty);
+    version: 0);
 
 await documentStore.UpdateDocuments(newDocument);
 ```

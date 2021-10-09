@@ -203,7 +203,7 @@ namespace PgDoc.Tests
             await UpdateDocument(_ids[0], "{}", 0);
             await UpdateDocument(_ids[0], "{\"abc\":\"def\"}", 1);
             await UpdateDocument(_ids[1], "{\"ghi\":\"jkl\"}", 0);
-            
+
             await _store.UpdateDocuments(
                 new Document[]
                 {

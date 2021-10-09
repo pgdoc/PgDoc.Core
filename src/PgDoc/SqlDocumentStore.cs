@@ -17,7 +17,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
@@ -77,17 +76,12 @@ namespace PgDoc
             }
 
             using NpgsqlCommand command = new NpgsqlCommand("update_documents", _connection, _transaction);
-
             command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.Add(new NpgsqlParameter()
-            {
-                ParameterName = "@document_updates",
-                Value = documents
-            });
+            command.Parameters.AddWithValue("@document_updates", documents);
 
             try
             {
-                await ExecuteQuery(command, reader => 0);
+                await command.ExecuteNonQueryAsync();
             }
             catch (PostgresException exception)
             when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
@@ -109,19 +103,25 @@ namespace PgDoc
             if (idList.Count == 0)
                 return new Document[0];
 
-            using NpgsqlCommand command = new NpgsqlCommand("get_documents", _connection, _transaction);
+            Dictionary<Guid, Document> documents = new Dictionary<Guid, Document>(idList.Count);
+            using (NpgsqlCommand command = new NpgsqlCommand("get_documents", _connection, _transaction))
+            {
+                command.CommandType = CommandType.StoredProcedure;
+                command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-            command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
+                using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default | CommandBehavior.SingleResult))
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        Document document = new Document(
+                            (Guid)reader["id"],
+                            reader["body"] is DBNull ? null : (string)reader["body"],
+                            (long)reader["version"]);
 
-            IReadOnlyList<Document> queryResult = await ExecuteQuery(
-                command,
-                reader => new Document(
-                    (Guid)reader["id"],
-                    reader["body"] is DBNull ? null : (string)reader["body"],
-                    (long)reader["version"]));
-
-            Dictionary<Guid, Document> documents = queryResult.ToDictionary(document => document.Id);
+                        documents.Add(document.Id, document);
+                    }
+                }
+            }
 
             List<Document> result = new List<Document>(idList.Count);
             foreach (Guid id in idList)
@@ -144,19 +144,6 @@ namespace PgDoc
         public void Dispose()
         {
             _connection.Dispose();
-        }
-
-        private async Task<IReadOnlyList<T>> ExecuteQuery<T>(NpgsqlCommand command, Func<DbDataReader, T> readRecord)
-        {
-            List<T> result = new List<T>();
-
-            using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default | CommandBehavior.SingleResult))
-            {
-                while (await reader.ReadAsync())
-                    result.Add(readRecord(reader));
-            }
-
-            return result.AsReadOnly();
         }
 
         private sealed class DocumentUpdate
