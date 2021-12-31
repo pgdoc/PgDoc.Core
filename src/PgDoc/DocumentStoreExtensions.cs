@@ -12,29 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace PgDoc;
+
 using System;
 using System.Threading.Tasks;
 
-namespace PgDoc
+public static class DocumentStoreExtensions
 {
-    public static class DocumentStoreExtensions
+    /// <summary>
+    /// Updates atomically the body of multiple documents.
+    /// </summary>
+    /// <exception cref="UpdateConflictException">Thrown when attempting to modify a document using the wrong
+    /// base version.</exception>
+    public static Task UpdateDocuments(this IDocumentStore documentStore, params Document[] objects)
     {
-        /// <summary>
-        /// Updates atomically the body of multiple documents.
-        /// </summary>
-        /// <exception cref="UpdateConflictException">Thrown when attempting to modify a document using the wrong
-        /// base version.</exception>
-        public static Task UpdateDocuments(this IDocumentStore documentStore, params Document[] objects)
-        {
-            return documentStore.UpdateDocuments(objects, new Document[0]);
-        }
+        return documentStore.UpdateDocuments(objects, Array.Empty<Document>());
+    }
 
-        /// <summary>
-        /// Retrieves a document given its ID.
-        /// </summary>
-        public static async Task<Document> GetDocument(this IDocumentStore documentStore, Guid id)
-        {
-            return (await documentStore.GetDocuments(new[] { id }))[0];
-        }
+    /// <summary>
+    /// Retrieves a document given its ID.
+    /// </summary>
+    public static async Task<Document> GetDocument(this IDocumentStore documentStore, Guid id)
+    {
+        return (await documentStore.GetDocuments(new[] { id }))[0];
     }
 }

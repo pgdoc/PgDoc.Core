@@ -12,17 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace PgDoc.Tests;
+
 using Microsoft.Extensions.Configuration;
 
-namespace PgDoc.Tests
+public class ConfigurationManager
 {
-    public class ConfigurationManager
+    public static string GetSetting(string key)
     {
-        public static string GetSetting(string key)
-        {
-            IConfigurationRoot configuration = new ConfigurationBuilder().AddJsonFile("config.json").Build();
+        IConfigurationRoot configuration = new ConfigurationBuilder().AddJsonFile("config.json").Build();
 
-            return configuration[key];
-        }
+        return configuration[key];
     }
 }

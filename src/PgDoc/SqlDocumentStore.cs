@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace PgDoc;
+
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,140 +23,137 @@ using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
 
-namespace PgDoc
+/// <summary>
+/// Represents an implementation of the <see cref="IDocumentStore" /> interface that relies on PosgreSQL for
+/// persistence.
+/// </summary>
+public class SqlDocumentStore : IDocumentStore
 {
-    /// <summary>
-    /// Represents an implementation of the <see cref="IDocumentStore" /> interface that relies on PosgreSQL for
-    /// persistence.
-    /// </summary>
-    public class SqlDocumentStore : IDocumentStore
+    private const string SerializationFailureSqlState = "40001";
+    private const string DeadlockDetectedSqlState = "40P01";
+
+    private readonly NpgsqlConnection _connection;
+    private NpgsqlTransaction? _transaction = null;
+
+    public SqlDocumentStore(NpgsqlConnection connection)
     {
-        private const string SerializationFailureSqlState = "40001";
-        private const string DeadlockDetectedSqlState = "40P01";
+        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    }
 
-        private readonly NpgsqlConnection _connection;
-        private NpgsqlTransaction? _transaction = null;
-
-        public SqlDocumentStore(NpgsqlConnection connection)
+    public async Task Initialize()
+    {
+        if (_connection.State == ConnectionState.Closed)
         {
-            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            await _connection.OpenAsync();
+            _connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
+        }
+    }
+
+    public async Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
+    {
+        List<DocumentUpdate> documents = new();
+
+        foreach (Document document in updatedDocuments)
+        {
+            documents.Add(new DocumentUpdate()
+            {
+                Id = document.Id,
+                Body = document.Body,
+                Version = document.Version,
+                CheckOnly = false
+            });
         }
 
-        public async Task Initialize()
+        foreach (Document document in checkedDocuments)
         {
-            if (_connection.State == ConnectionState.Closed)
+            documents.Add(new DocumentUpdate()
             {
-                await _connection.OpenAsync();
-                _connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
-            }
+                Id = document.Id,
+                Body = null,
+                Version = document.Version,
+                CheckOnly = true
+            });
         }
 
-        public async Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
+        using NpgsqlCommand command = new("update_documents", _connection, _transaction);
+        command.CommandType = CommandType.StoredProcedure;
+        command.Parameters.AddWithValue("@document_updates", documents);
+
+        try
         {
-            List<DocumentUpdate> documents = new List<DocumentUpdate>();
+            await command.ExecuteNonQueryAsync();
+        }
+        catch (PostgresException exception)
+        when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
+        {
+            throw new UpdateConflictException(documents[0].Id, documents[0].Version);
+        }
+        catch (PostgresException exception)
+        when (exception.MessageText == "update_documents_conflict")
+        {
+            DocumentUpdate conflict = documents.First(item => item.Id.Equals(Guid.Parse(exception.Hint)));
+            throw new UpdateConflictException(conflict.Id, conflict.Version);
+        }
+    }
 
-            foreach (Document document in updatedDocuments)
-            {
-                documents.Add(new DocumentUpdate()
-                {
-                    Id = document.Id,
-                    Body = document.Body,
-                    Version = document.Version,
-                    CheckOnly = false
-                });
-            }
+    public async Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids)
+    {
+        List<Guid> idList = ids.ToList();
 
-            foreach (Document document in checkedDocuments)
-            {
-                documents.Add(new DocumentUpdate()
-                {
-                    Id = document.Id,
-                    Body = null,
-                    Version = document.Version,
-                    CheckOnly = true
-                });
-            }
+        if (idList.Count == 0)
+            return Array.Empty<Document>();
 
-            using NpgsqlCommand command = new NpgsqlCommand("update_documents", _connection, _transaction);
+        Dictionary<Guid, Document> documents = new(idList.Count);
+        using (NpgsqlCommand command = new("get_documents", _connection, _transaction))
+        {
             command.CommandType = CommandType.StoredProcedure;
-            command.Parameters.AddWithValue("@document_updates", documents);
+            command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-            try
+            using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default | CommandBehavior.SingleResult))
             {
-                await command.ExecuteNonQueryAsync();
-            }
-            catch (PostgresException exception)
-            when (exception.SqlState == SerializationFailureSqlState || exception.SqlState == DeadlockDetectedSqlState)
-            {
-                throw new UpdateConflictException(documents[0].Id, documents[0].Version);
-            }
-            catch (PostgresException exception)
-            when (exception.MessageText == "update_documents_conflict")
-            {
-                DocumentUpdate conflict = documents.First(item => item.Id.Equals(Guid.Parse(exception.Hint)));
-                throw new UpdateConflictException(conflict.Id, conflict.Version);
-            }
-        }
-
-        public async Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids)
-        {
-            List<Guid> idList = ids.ToList();
-
-            if (idList.Count == 0)
-                return new Document[0];
-
-            Dictionary<Guid, Document> documents = new Dictionary<Guid, Document>(idList.Count);
-            using (NpgsqlCommand command = new NpgsqlCommand("get_documents", _connection, _transaction))
-            {
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
-
-                using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default | CommandBehavior.SingleResult))
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        Document document = new Document(
-                            (Guid)reader["id"],
-                            reader["body"] is DBNull ? null : (string)reader["body"],
-                            (long)reader["version"]);
+                    Document document = new(
+                        (Guid)reader["id"],
+                        reader["body"] is DBNull ? null : (string)reader["body"],
+                        (long)reader["version"]);
 
-                        documents.Add(document.Id, document);
-                    }
+                    documents.Add(document.Id, document);
                 }
             }
-
-            List<Document> result = new List<Document>(idList.Count);
-            foreach (Guid id in idList)
-            {
-                if (documents.TryGetValue(id, out Document document))
-                    result.Add(document);
-                else
-                    result.Add(new Document(id, null, 0));
-            }
-
-            return result.AsReadOnly();
         }
 
-        public DbTransaction StartTransaction(IsolationLevel isolationLevel)
+        List<Document> result = new(idList.Count);
+        foreach (Guid id in idList)
         {
-            _transaction = _connection.BeginTransaction(isolationLevel);
-            return _transaction;
+            if (documents.TryGetValue(id, out Document document))
+                result.Add(document);
+            else
+                result.Add(new Document(id, null, 0));
         }
 
-        public void Dispose()
-        {
-            _connection.Dispose();
-        }
+        return result.AsReadOnly();
+    }
 
-        private sealed class DocumentUpdate
-        {
-            public Guid Id { get; set; }
+    public DbTransaction StartTransaction(IsolationLevel isolationLevel)
+    {
+        _transaction = _connection.BeginTransaction(isolationLevel);
+        return _transaction;
+    }
 
-            public string? Body { get; set; }
+    public void Dispose()
+    {
+        _connection.Dispose();
+    }
 
-            public long Version { get; set; }
+    private sealed class DocumentUpdate
+    {
+        public Guid Id { get; set; }
 
-            public bool CheckOnly { get; set; }
-        }
+        public string? Body { get; set; }
+
+        public long Version { get; set; }
+
+        public bool CheckOnly { get; set; }
     }
 }

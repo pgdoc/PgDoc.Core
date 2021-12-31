@@ -12,45 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace PgDoc;
+
 using System;
 
-namespace PgDoc
+/// <summary>
+/// Represents a document composed of a unique ID, a JSON body and a version number.
+/// </summary>
+public class Document
 {
-    /// <summary>
-    /// Represents a document composed of a unique ID, a JSON body and a version number.
-    /// </summary>
-    public class Document
+    public Document(Guid id, string? body, long version)
     {
-        public Document(Guid id, string? body, long version)
-        {
-            Id = id;
-            Body = body;
-            Version = version;
-        }
+        Id = id;
+        Body = body;
+        Version = version;
+    }
 
-        /// <summary>
-        /// Gets the unique identifier of the document.
-        /// </summary>
-        public Guid Id { get; }
+    /// <summary>
+    /// Gets the unique identifier of the document.
+    /// </summary>
+    public Guid Id { get; }
 
-        /// <summary>
-        /// Gets the JSON body of the document as a string, or null if the document does not exist.
-        /// </summary>
-        public string? Body { get; }
+    /// <summary>
+    /// Gets the JSON body of the document as a string, or null if the document does not exist.
+    /// </summary>
+    public string? Body { get; }
 
-        /// <summary>
-        /// Gets the current version of the document.
-        /// </summary>
-        public long Version { get; }
+    /// <summary>
+    /// Gets the current version of the document.
+    /// </summary>
+    public long Version { get; }
 
-        /// <summary>
-        /// Deconstructs the ID, body and version of this <see cref="Document"/> object.
-        /// </summary>
-        public void Deconstruct(out Guid id, out string? body, out long version)
-        {
-            id = Id;
-            body = Body;
-            version = Version;
-        }
+    /// <summary>
+    /// Deconstructs the ID, body and version of this <see cref="Document"/> object.
+    /// </summary>
+    public void Deconstruct(out Guid id, out string? body, out long version)
+    {
+        id = Id;
+        body = Body;
+        version = Version;
     }
 }

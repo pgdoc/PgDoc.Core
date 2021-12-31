@@ -12,30 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace PgDoc;
+
 using System;
 
-namespace PgDoc
+/// <summary>
+/// Represents an error that occurs when attempting to modify a document using the wrong base version.
+/// </summary>
+public class UpdateConflictException : Exception
 {
     /// <summary>
-    /// Represents an error that occurs when attempting to modify a document using the wrong base version.
+    /// Initializes a new instance of the <see cref="UpdateConflictException"/> class.
     /// </summary>
-    public class UpdateConflictException : Exception
+    public UpdateConflictException(Guid id, long version)
+        : base($"The object '{id}' has been modified.")
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UpdateConflictException"/> class.
-        /// </summary>
-        public UpdateConflictException(Guid id, long version)
-            : base($"The object '{id}' has been modified.")
-        {
-            Id = id;
-            Version = version;
-        }
-
-        /// <summary>
-        /// Gets the failed record mutation.
-        /// </summary>
-        public Guid Id { get; }
-
-        public long Version { get; }
+        Id = id;
+        Version = version;
     }
+
+    /// <summary>
+    /// Gets the failed record mutation.
+    /// </summary>
+    public Guid Id { get; }
+
+    public long Version { get; }
 }

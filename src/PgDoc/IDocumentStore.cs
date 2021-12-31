@@ -12,38 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+namespace PgDoc;
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace PgDoc
+/// <summary>
+/// Represents an object used to retrieve and modify documents.
+/// </summary>
+public interface IDocumentStore : IDisposable
 {
     /// <summary>
-    /// Represents an object used to retrieve and modify documents.
+    /// Initializes the document store.
     /// </summary>
-    public interface IDocumentStore : IDisposable
-    {
-        /// <summary>
-        /// Initializes the document store.
-        /// </summary>
-        /// <returns>The task object representing the asynchronous operation.</returns>
-        Task Initialize();
+    /// <returns>The task object representing the asynchronous operation.</returns>
+    Task Initialize();
 
-        /// <summary>
-        /// Updates atomically the body of multiple documents.
-        /// </summary>
-        /// <param name="updatedDocuments">The documents being updated.</param>
-        /// <param name="checkedDocuments">The documents whose versions are checked, but which are not updated.</param>
-        /// <returns>The task object representing the asynchronous operation.</returns>
-        /// <exception cref="UpdateConflictException">Thrown when attempting to modify a document using the wrong
-        /// base version.</exception>
-        Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments);
+    /// <summary>
+    /// Updates atomically the body of multiple documents.
+    /// </summary>
+    /// <param name="updatedDocuments">The documents being updated.</param>
+    /// <param name="checkedDocuments">The documents whose versions are checked, but which are not updated.</param>
+    /// <returns>The task object representing the asynchronous operation.</returns>
+    /// <exception cref="UpdateConflictException">Thrown when attempting to modify a document using the wrong
+    /// base version.</exception>
+    Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments);
 
-        /// <summary>
-        /// Retrieves multiple documents given their IDs.
-        /// </summary>
-        /// <param name="ids">The IDs of the documents to retrieve.</param>
-        /// <returns>The task object representing the asynchronous operation.</returns>
-        Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids);
-    }
+    /// <summary>
+    /// Retrieves multiple documents given their IDs.
+    /// </summary>
+    /// <param name="ids">The IDs of the documents to retrieve.</param>
+    /// <returns>The task object representing the asynchronous operation.</returns>
+    Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids);
 }
