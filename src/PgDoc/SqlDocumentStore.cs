@@ -43,10 +43,10 @@ public class SqlDocumentStore : IDocumentStore
     public async Task Initialize()
     {
         if (_connection.State == ConnectionState.Closed)
-        {
             await _connection.OpenAsync();
-            _connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
-        }
+
+        _connection.TypeMapper.Reset();
+        _connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
     }
 
     public async Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)

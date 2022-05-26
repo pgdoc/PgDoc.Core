@@ -24,27 +24,37 @@ using Newtonsoft.Json.Linq;
 using Npgsql;
 using Xunit;
 
-public class SqlDocumentStoreTests : IDisposable
+public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
 {
+    private DatabaseFixture _database;
+
+    private SqlDocumentStore _store;
+
     private const bool Update = false, Insert = true;
     private const bool ChangeBody = false, CheckVersion = true;
 
     private static readonly Guid[] _ids =
         Enumerable.Range(0, 32).Select(index => new Guid(Enumerable.Range(0, 16).Select(i => (byte)index).ToArray())).ToArray();
 
-    private readonly SqlDocumentStore _store;
+    #region Setup
 
-    public SqlDocumentStoreTests()
+    public SqlDocumentStoreTests(DatabaseFixture database)
     {
-        NpgsqlConnection connection = new(ConfigurationManager.GetSetting("connection_string"));
+        _database = database;
+        _database.Reset().Wait();
+
+        NpgsqlConnection connection = new(_database.ConnectionString);
 
         _store = new SqlDocumentStore(connection);
         _store.Initialize().Wait();
-
-        NpgsqlCommand command = connection.CreateCommand();
-        command.CommandText = @"TRUNCATE TABLE document;";
-        command.ExecuteNonQuery();
     }
+
+    public void Dispose()
+    {
+        _store.Dispose();
+    }
+
+    #endregion
 
     #region Constructor
 
@@ -477,16 +487,11 @@ public class SqlDocumentStoreTests : IDisposable
 
     #endregion
 
-    public void Dispose()
-    {
-        _store.Dispose();
-    }
-
     #region Helper Methods
 
-    private static async Task<SqlDocumentStore> CreateDocumentStore(bool shortTimeout = false)
+    private async Task<SqlDocumentStore> CreateDocumentStore(bool shortTimeout = false)
     {
-        NpgsqlConnection connection = new(ConfigurationManager.GetSetting("connection_string"));
+        NpgsqlConnection connection = new(_database.ConnectionString);
 
         SqlDocumentStore engine = new(connection);
         await engine.Initialize();
