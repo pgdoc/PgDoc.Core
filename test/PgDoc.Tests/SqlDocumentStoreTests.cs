@@ -26,9 +26,9 @@ using Xunit;
 
 public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
 {
-    private DatabaseFixture _database;
-
-    private SqlDocumentStore _store;
+    private readonly DatabaseFixture _database;
+    private readonly NpgsqlConnection _connection;
+    private readonly SqlDocumentStore _store;
 
     private const bool Update = false, Insert = true;
     private const bool ChangeBody = false, CheckVersion = true;
@@ -43,9 +43,9 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
         _database = database;
         _database.Reset().Wait();
 
-        NpgsqlConnection connection = new(_database.ConnectionString);
+        _connection = new(_database.ConnectionString);
 
-        _store = new SqlDocumentStore(connection);
+        _store = new SqlDocumentStore(_connection);
         _store.Initialize().Wait();
     }
 
@@ -483,6 +483,28 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
         Document document = await _store.GetDocument(_ids[0]);
 
         AssertDocument(document, _ids[0], "{\"abc\":\"def\"}", 1);
+    }
+
+    #endregion
+
+    #region ExecuteQuery
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{\"abc\":\"def\"}")]
+    public async Task ExecuteQuery_Success(string body)
+    {
+        await UpdateDocument(body, 0);
+
+        NpgsqlCommand command = _connection.CreateCommand();
+        command.CommandText = "SELECT id, body, version FROM document";
+
+        List<Document> documents = new();
+        await foreach (Document document in _store.ExecuteQuery(command))
+            documents.Add(document);
+
+        Assert.Single(documents);
+        AssertDocument(documents[0], _ids[0], body, 1);
     }
 
     #endregion

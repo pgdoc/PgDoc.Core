@@ -19,6 +19,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
@@ -27,7 +29,7 @@ using NpgsqlTypes;
 /// Represents an implementation of the <see cref="IDocumentStore" /> interface that relies on PosgreSQL for
 /// persistence.
 /// </summary>
-public class SqlDocumentStore : IDocumentStore
+public class SqlDocumentStore : ISqlDocumentStore
 {
     private const string SerializationFailureSqlState = "40001";
     private const string DeadlockDetectedSqlState = "40P01";
@@ -40,6 +42,7 @@ public class SqlDocumentStore : IDocumentStore
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
 
+    /// <inheritdoc />
     public async Task Initialize()
     {
         if (_connection.State == ConnectionState.Closed)
@@ -49,6 +52,7 @@ public class SqlDocumentStore : IDocumentStore
         _connection.TypeMapper.MapComposite<DocumentUpdate>("document_update");
     }
 
+    /// <inheritdoc />
     public async Task UpdateDocuments(IEnumerable<Document> updatedDocuments, IEnumerable<Document> checkedDocuments)
     {
         List<DocumentUpdate> documents = new();
@@ -96,6 +100,7 @@ public class SqlDocumentStore : IDocumentStore
         }
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Document>> GetDocuments(IEnumerable<Guid> ids)
     {
         List<Guid> idList = ids.ToList();
@@ -109,18 +114,8 @@ public class SqlDocumentStore : IDocumentStore
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
 
-            using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default | CommandBehavior.SingleResult))
-            {
-                while (await reader.ReadAsync())
-                {
-                    Document document = new(
-                        (Guid)reader["id"],
-                        reader["body"] is DBNull ? null : (string)reader["body"],
-                        (long)reader["version"]);
-
-                    documents.Add(document.Id, document);
-                }
-            }
+            await foreach (Document document in ExecuteQuery(command))
+                documents.Add(document.Id, document);
         }
 
         List<Document> result = new(idList.Count);
@@ -133,6 +128,24 @@ public class SqlDocumentStore : IDocumentStore
         }
 
         return result.AsReadOnly();
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<Document> ExecuteQuery(
+        NpgsqlCommand command,
+        [EnumeratorCancellation] CancellationToken cancel = default)
+    {
+        using DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.SingleResult, cancel);
+
+        while (await reader.ReadAsync(cancel))
+        {
+            Document document = new(
+                (Guid)reader["id"],
+                reader["body"] is DBNull ? null : (string)reader["body"],
+                (long)reader["version"]);
+
+            yield return document;
+        }
     }
 
     public DbTransaction StartTransaction(IsolationLevel isolationLevel)

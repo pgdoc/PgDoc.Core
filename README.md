@@ -1,4 +1,5 @@
 # PgDoc
+[![PgDoc](https://img.shields.io/nuget/v/PgDoc.svg?style=flat-square&color=blue&logo=nuget)](https://www.nuget.org/packages/PgDoc/)
 
 PgDoc is a library for using PostgreSQL as a JSON document store.
 
