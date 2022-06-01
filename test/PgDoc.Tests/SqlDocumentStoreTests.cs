@@ -311,7 +311,7 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
     {
         await UpdateDocument("{\"abc\":\"def\"}", 0);
 
-        using (_store.StartTransaction(IsolationLevel.ReadCommitted))
+        using (_store.Connection.BeginTransaction(IsolationLevel.ReadCommitted))
         {
             await UpdateDocument(_ids[1], "{\"ghi\":\"jkl\"}", 0);
 
@@ -342,7 +342,7 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
 
         SqlDocumentStore connection1 = await CreateDocumentStore();
         SqlDocumentStore connection2 = await CreateDocumentStore();
-        using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.RepeatableRead))
+        using (DbTransaction transaction = connection1.Connection.BeginTransaction(IsolationLevel.RepeatableRead))
         {
             // Start transaction 1
             await connection1.GetDocument(_ids[0]);
@@ -377,8 +377,8 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
 
         SqlDocumentStore connection1 = await CreateDocumentStore();
         SqlDocumentStore connection2 = await CreateDocumentStore();
-        using (DbTransaction transaction1 = connection1.StartTransaction(IsolationLevel.ReadCommitted))
-        using (DbTransaction transaction2 = connection2.StartTransaction(IsolationLevel.ReadCommitted))
+        using (DbTransaction transaction1 = connection1.Connection.BeginTransaction(IsolationLevel.ReadCommitted))
+        using (DbTransaction transaction2 = connection2.Connection.BeginTransaction(IsolationLevel.ReadCommitted))
         {
             // Lock the document with both transactions
             await CheckDocument(1, connection1);
@@ -435,7 +435,7 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
 
         SqlDocumentStore connection1 = await CreateDocumentStore(shortTimeout: true);
         SqlDocumentStore connection2 = await CreateDocumentStore(shortTimeout: true);
-        using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.ReadCommitted))
+        using (DbTransaction transaction = connection1.Connection.BeginTransaction(IsolationLevel.ReadCommitted))
         {
             // Lock the document with transaction 1
             updatedVersion =
@@ -469,7 +469,7 @@ public class SqlDocumentStoreTests : IClassFixture<DatabaseFixture>, IDisposable
 
         SqlDocumentStore connection1 = await CreateDocumentStore();
         SqlDocumentStore connection2 = await CreateDocumentStore();
-        using (DbTransaction transaction = connection1.StartTransaction(IsolationLevel.ReadCommitted))
+        using (DbTransaction transaction = connection1.Connection.BeginTransaction(IsolationLevel.ReadCommitted))
         {
             // Lock the document for read with transaction 1
             await CheckDocument(1, connection1);

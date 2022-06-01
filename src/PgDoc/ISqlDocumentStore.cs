@@ -15,8 +15,8 @@
 namespace PgDoc;
 
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading;
-using Npgsql;
 
 public interface ISqlDocumentStore : IDocumentStore
 {
@@ -24,5 +24,5 @@ public interface ISqlDocumentStore : IDocumentStore
     /// Executes a SQL query and converts the result into an asynchronous stream of <see cref="Document"/> objects.
     /// The query must return the id, body and version columns.
     /// </summary>
-    IAsyncEnumerable<Document> ExecuteQuery(NpgsqlCommand command, CancellationToken cancel = default);
+    IAsyncEnumerable<Document> ExecuteQuery(DbCommand command, CancellationToken cancel = default);
 }

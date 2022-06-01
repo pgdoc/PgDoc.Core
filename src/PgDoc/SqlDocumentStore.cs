@@ -35,12 +35,13 @@ public class SqlDocumentStore : ISqlDocumentStore
     private const string DeadlockDetectedSqlState = "40P01";
 
     private readonly NpgsqlConnection _connection;
-    private NpgsqlTransaction? _transaction = null;
 
     public SqlDocumentStore(NpgsqlConnection connection)
     {
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
     }
+
+    public DbConnection Connection { get => _connection; }
 
     /// <inheritdoc />
     public async Task Initialize()
@@ -79,7 +80,7 @@ public class SqlDocumentStore : ISqlDocumentStore
             });
         }
 
-        using NpgsqlCommand command = new("update_documents", _connection, _transaction);
+        using NpgsqlCommand command = new("update_documents", _connection);
         command.CommandType = CommandType.StoredProcedure;
         command.Parameters.AddWithValue("@document_updates", documents);
 
@@ -109,7 +110,7 @@ public class SqlDocumentStore : ISqlDocumentStore
             return Array.Empty<Document>();
 
         Dictionary<Guid, Document> documents = new(idList.Count);
-        using (NpgsqlCommand command = new("get_documents", _connection, _transaction))
+        using (NpgsqlCommand command = new("get_documents", _connection))
         {
             command.CommandType = CommandType.StoredProcedure;
             command.Parameters.AddWithValue("@ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, idList);
@@ -132,9 +133,10 @@ public class SqlDocumentStore : ISqlDocumentStore
 
     /// <inheritdoc />
     public async IAsyncEnumerable<Document> ExecuteQuery(
-        NpgsqlCommand command,
+        DbCommand command,
         [EnumeratorCancellation] CancellationToken cancel = default)
     {
+        command.Connection = _connection;
         using DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.SingleResult, cancel);
 
         while (await reader.ReadAsync(cancel))
@@ -146,12 +148,6 @@ public class SqlDocumentStore : ISqlDocumentStore
 
             yield return document;
         }
-    }
-
-    public DbTransaction StartTransaction(IsolationLevel isolationLevel)
-    {
-        _transaction = _connection.BeginTransaction(isolationLevel);
-        return _transaction;
     }
 
     public void Dispose()
