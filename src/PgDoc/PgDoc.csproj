@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>2.1.0</VersionPrefix>
+    <VersionPrefix>2.1.1</VersionPrefix>
     <Title>PgDoc</Title>
     <Description>PgDoc is a library for using PostgreSQL as a JSON document store.</Description>
     <Authors>Flavien Charlon</Authors>
@@ -27,6 +27,14 @@
 
   <ItemGroup>
     <PackageReference Include="npgsql" Version="6.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="sql/pgdoc.sql">
+      <PackagePath>content/PgDoc;contentFiles/any/any/PgDoc</PackagePath>
+      <PackageCopyToOutput>true</PackageCopyToOutput>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

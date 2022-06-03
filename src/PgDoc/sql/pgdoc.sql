@@ -51,18 +51,18 @@ BEGIN
     -- This query returns conflicting rows, the result must be empty
     -- "FOR SHARE" ensures existing documents don't get modified before the UPDATE statement
 
-    WITH document_update AS (
-      SELECT document.id, document.version AS old_version, document_update.version AS new_version
-      FROM document, UNNEST(document_updates) AS document_update
-      WHERE document.id = document_update.id
-      FOR SHARE OF document
+    WITH document_update AS MATERIALIZED (
+        SELECT document.id, document.version AS old_version, document_update.version AS new_version
+        FROM document, UNNEST(document_updates) AS document_update
+        WHERE document.id = document_update.id
+        FOR SHARE OF document
     )
     SELECT id INTO conflict_id
     FROM document_update
     WHERE old_version <> new_version;
 
     IF conflict_id IS NOT NULL THEN
-      RAISE EXCEPTION 'update_documents_conflict' USING HINT = conflict_id::text;
+        RAISE EXCEPTION 'update_documents_conflict' USING HINT = conflict_id::text;
     END IF;
 
     -- Update existing documents

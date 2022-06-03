@@ -34,7 +34,7 @@ public class DatabaseFixture : IAsyncLifetime
         const string database = "db";
         const string username = "postgres";
 
-        TestcontainerDatabaseConfiguration configuration = new PostgreSqlTestcontainerConfiguration()
+        TestcontainerDatabaseConfiguration configuration = new PostgreSqlTestcontainerConfiguration("postgres:12")
         {
             Database = database,
             Username = username,
@@ -50,7 +50,7 @@ public class DatabaseFixture : IAsyncLifetime
         using (NpgsqlConnection connection = new(_container.ConnectionString))
         {
             await connection.OpenAsync();
-            string script = await File.ReadAllTextAsync(@"SQL/pgdoc.sql");
+            string script = await File.ReadAllTextAsync(@"sql/pgdoc.sql");
             NpgsqlCommand command = connection.CreateCommand();
             command.CommandText = script;
             await command.ExecuteNonQueryAsync();

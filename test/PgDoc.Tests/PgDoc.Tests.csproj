@@ -3,21 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <LangVersion>10.0</LangVersion>
-
-    <Description>PgDoc is a library for using PostgreSQL as a JSON document store.</Description>
-    <Authors>Flavien Charlon</Authors>
-    <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
-    <Copyright>Copyright © 2016 Flavien Charlon</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\src\PgDoc\SQL\pgdoc.sql" Link="SQL\pgdoc.sql">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\PgDoc\PgDoc.csproj" />
+    <ProjectReference Include="../../src/PgDoc/PgDoc.csproj" />
   </ItemGroup>
 
   <ItemGroup>
