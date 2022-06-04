@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace PgDoc.Tests;
+namespace PgDoc.Core.Tests;
 
 using System;
 using Xunit;

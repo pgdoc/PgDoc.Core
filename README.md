@@ -1,11 +1,11 @@
-# PgDoc
-[![PgDoc](https://img.shields.io/nuget/v/PgDoc.svg?style=flat-square&color=blue&logo=nuget)](https://www.nuget.org/packages/PgDoc/)
+# PgDoc.Core
+[![PgDoc](https://img.shields.io/nuget/v/PgDoc.Core.svg?style=flat-square&color=blue&logo=nuget)](https://www.nuget.org/packages/PgDoc.Core/)
 
 PgDoc is a library for using PostgreSQL as a JSON document store.
 
 ## Setup
 
-Run the [`PgDoc/pgdoc.sql` SQL script](src/PgDoc/Sql/pgdoc.sql) to create the required table and functions in the database.
+Run the [PgDoc.Core.sql script](src/PgDoc.Core/Sql/PgDoc.Core.sql) to create the required table and functions in the database.
 
 The minimum supported version is PostgreSQL 12.
 

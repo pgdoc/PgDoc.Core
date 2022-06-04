@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/PgDoc/PgDoc.csproj" />
+    <ProjectReference Include="../../src/PgDoc.Core/PgDoc.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
