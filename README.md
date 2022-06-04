@@ -5,7 +5,7 @@ PgDoc is a library for using PostgreSQL as a JSON document store.
 
 ## Setup
 
-Run the [`PgDoc/pgdoc.sql` SQL script](src/PgDoc/SQL/pgdoc.sql) to create the required table and functions in the database.
+Run the [`PgDoc/pgdoc.sql` SQL script](src/PgDoc/Sql/pgdoc.sql) to create the required table and functions in the database.
 
 The minimum supported version is PostgreSQL 12.
 

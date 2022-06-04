@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="sql/pgdoc.sql">
+    <Content Include="Sql/pgdoc.sql">
       <PackagePath>content/PgDoc;contentFiles/any/any/PgDoc</PackagePath>
       <PackageCopyToOutput>true</PackageCopyToOutput>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
