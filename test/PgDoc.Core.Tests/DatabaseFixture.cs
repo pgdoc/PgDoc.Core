@@ -50,7 +50,7 @@ public class DatabaseFixture : IAsyncLifetime
         using (NpgsqlConnection connection = new(_container.ConnectionString))
         {
             await connection.OpenAsync();
-            string script = await File.ReadAllTextAsync(@"Sql/pgdoc.sql");
+            string script = await File.ReadAllTextAsync(@"Sql/PgDoc.Core.sql");
             NpgsqlCommand command = connection.CreateCommand();
             command.CommandText = script;
             await command.ExecuteNonQueryAsync();
